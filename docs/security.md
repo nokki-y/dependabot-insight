@@ -93,7 +93,7 @@ Only sent when `anthropic-api-key` is provided. The exact data sent is the impac
 
 ### What stays local (GitHub Actions runner only)
 
-- Source code files in the target repository (read for AST parsing, never transmitted)
+- Source code files in the target repository (read for AST parsing, but source code body is not included in PR comments or sent to Claude API)
 - `package-lock.json` content in the target repository (parsed locally for dependency tree analysis)
 - `tsconfig.json` content in the target repository (parsed locally for path alias resolution)
 - All tokens and API keys (used only for authenticated API calls)
@@ -141,7 +141,7 @@ When the target repository is private, be aware that the following information b
 
 ### Sent to Claude API (if `anthropic-api-key` is provided)
 
-The same information listed above is sent to Anthropic's API. Per [Anthropic's API terms](https://www.anthropic.com/api-terms), API inputs are not used for model training. However, if your organization's security policy prohibits sending internal metadata to third-party APIs, omit the `anthropic-api-key` input. The static impact analysis will still be posted as a PR comment without any external API call.
+The same information listed above is sent to Anthropic's API. Per [Anthropic's API terms](https://www.anthropic.com/api-terms), API inputs are not used for model training. However, if your organization's security policy prohibits sending internal metadata to third-party APIs, omit the `anthropic-api-key` input. The static impact analysis will still be posted as a PR comment without calling the Claude API.
 
 ### Mitigation options
 
