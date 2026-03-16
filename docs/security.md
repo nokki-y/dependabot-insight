@@ -12,24 +12,35 @@ This document describes the security architecture of dependabot-insight — what
 
 ```mermaid
 flowchart TD
-    subgraph TARGET["Target Repository (where this action is used)"]
-        F1["package.json — classify dependency<br>(dependencies / devDependencies)"]
-        F2["package-lock.json — trace transitive dependencies"]
-        F3["tsconfig.json — resolve path aliases"]
-        F4["src/**/*.ts(x) — collect import/export declarations<br>(full file read for AST parsing, but source code body<br>is NOT included in PR comments or sent to Claude API)"]
+    subgraph TARGET["Target Repository"]
+        F1["package.json"]
+        F2["package-lock.json"]
+        F3["tsconfig.json"]
+        F4["src/**/*.ts(x)"]
     end
 
-    TARGET -->|"Static analysis<br>(GitHub Actions runner)"| IA
-
-    subgraph IA["Impact Analysis"]
-        EXTRACT["Extracts:<br>• package names<br>• file paths<br>• route paths<br>• file counts<br><br>※ Source code body is NOT included<br>in PR comments or sent to Claude API"]
-    end
-
-    IA --> PR["GitHub PR Comment<br><br>Posts: static analysis results<br>as PR comment (impact summary)"]
-    IA --> CLAUDE["Claude API<br>(only when anthropic-api-key is provided)<br><br>Sends:<br>• impact summary (same as PR comment)<br>• prompt specifying QA report format<br><br>Returns:<br>• package necessity judgment<br>• test cases with steps<br>(= QA report, posted as PR comment)"]
+    TARGET -->|Static analysis| IA["Impact Analysis"]
+    IA --> PR["PR Comment"]
+    IA --> CLAUDE["Claude API"]
+    CLAUDE --> QA["QA Report Comment"]
 
     style CLAUDE stroke-dasharray: 5 5
+    style QA stroke-dasharray: 5 5
 ```
+
+**Diagram details:**
+
+| File read from target repository | Purpose |
+|---|---|
+| `package.json` | Classify dependency (dependencies / devDependencies) |
+| `package-lock.json` | Trace transitive dependencies |
+| `tsconfig.json` | Resolve path aliases |
+| `src/**/*.ts(x)` | Collect import/export declarations (full file read for AST parsing, but source code body is NOT included in PR comments or sent to Claude API) |
+
+| Destination | Data sent | Data returned |
+|-------------|-----------|---------------|
+| PR Comment | Impact summary (package names, file paths, route paths, file counts) | — |
+| Claude API (only when `anthropic-api-key` is provided) | Impact summary (same as PR comment) + prompt specifying QA report format | Package necessity judgment, test cases with steps (= QA report, posted as PR comment) |
 
 ### What is posted in PR comments
 
