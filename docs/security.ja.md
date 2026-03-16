@@ -98,22 +98,23 @@
 
 ## 組み込みの保護機能
 
-### 1. ログにおけるシークレットマスキング
+### 1. ログにおける `GITHUB_TOKEN` / `ANTHROPIC_API_KEY` のマスキング
 
-すべてのシークレットは GitHub Actions の `::add-mask::` メカニズムに2段階で登録されます:
+`GITHUB_TOKEN` と `ANTHROPIC_API_KEY` は GitHub Actions の `::add-mask::` メカニズムに2段階で登録されます:
 
-- **action.yml**: すべてのステップ実行前に `github-token` と `anthropic-api-key` をマスク
-- **スクリプト**: 多層防御として、各スクリプトが起動時にシークレットをマスク
+- **action.yml**: すべてのステップ実行前に `GITHUB_TOKEN` と `ANTHROPIC_API_KEY` をマスク登録
+- **スクリプト**: 多層防御として、各スクリプト（`impact-analysis.ts`, `test-recommendation.ts`）が起動時に同じ値をマスク登録
 
 マスク登録後、GitHub Actions はすべてのログ出力においてこれらの値を自動的に `***` に置換します。
 
 ### 2. エラーメッセージのサニタイズ
 
-APIエラーにはリクエスト/レスポンスの詳細が含まれる場合があります。両スクリプトはログ出力前にエラーメッセージをサニタイズします:
+GitHub PRコメント投稿や Claude API 呼び出しが失敗した場合、エラーメッセージにトークンやキーが含まれる可能性があります。両スクリプトはログ出力前にエラーメッセージから以下のパターンを除去します:
 
-- `Bearer <トークン>` → `Bearer ***`
-- 既知のキーパターン（`sk-ant-*`, `ghp_*`, `gho_*`, `ghs_*`, `ghr_*`）→ `***`
-- 既知のシークレット値の完全一致 → `***`
+- `Bearer <GITHUB_TOKEN の値>` → `Bearer ***`
+- Anthropic API キーのパターン（`sk-ant-*`）→ `***`
+- GitHub トークンのパターン（`ghp_*`, `gho_*`, `ghs_*`, `ghr_*`）→ `***`
+- `GITHUB_TOKEN` および `ANTHROPIC_API_KEY` の値そのものとの完全一致 → `***`
 
 ### 3. gitleaks によるシークレットスキャン
 

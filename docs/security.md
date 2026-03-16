@@ -100,22 +100,23 @@ Only sent when `anthropic-api-key` is provided. The exact data sent is the impac
 
 ## Built-in protections
 
-### 1. Secret masking in logs
+### 1. `GITHUB_TOKEN` / `ANTHROPIC_API_KEY` masking in logs
 
-All secrets are registered with GitHub Actions' `::add-mask::` mechanism at two levels:
+`GITHUB_TOKEN` and `ANTHROPIC_API_KEY` are registered with GitHub Actions' `::add-mask::` mechanism at two levels:
 
-- **action.yml**: Masks `github-token` and `anthropic-api-key` inputs before any step runs
-- **Scripts**: Each script masks its secrets at startup as a defense-in-depth measure
+- **action.yml**: Registers `GITHUB_TOKEN` and `ANTHROPIC_API_KEY` for masking before any step runs
+- **Scripts**: As a defense-in-depth measure, each script (`impact-analysis.ts`, `test-recommendation.ts`) registers the same values for masking at startup
 
-Once masked, GitHub Actions automatically replaces any occurrence of these values with `***` in all log output.
+Once registered, GitHub Actions automatically replaces any occurrence of these values with `***` in all log output.
 
 ### 2. Error message sanitization
 
-API errors may include request/response details. Both scripts sanitize error messages before logging:
+If a GitHub PR comment post or Claude API call fails, the error message may contain tokens or keys. Both scripts remove the following patterns from error messages before logging:
 
-- `Bearer <token>` → `Bearer ***`
-- Known key patterns (`sk-ant-*`, `ghp_*`, `gho_*`, `ghs_*`, `ghr_*`) → `***`
-- Exact matches of known secret values → `***`
+- `Bearer <GITHUB_TOKEN value>` → `Bearer ***`
+- Anthropic API key patterns (`sk-ant-*`) → `***`
+- GitHub token patterns (`ghp_*`, `gho_*`, `ghs_*`, `ghr_*`) → `***`
+- Exact matches of the `GITHUB_TOKEN` and `ANTHROPIC_API_KEY` values → `***`
 
 ### 3. Secret scanning with gitleaks
 
