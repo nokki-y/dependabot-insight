@@ -228,11 +228,19 @@ Dependabot PR 作成
 ```bash
 git clone https://github.com/nokki-y/dependabot-insight.git
 cd dependabot-insight
-npm install
-npm run build
+npm install    # prepare スクリプトで pre-commit hook が自動設定されます
 ```
 
+`npm install` により、シークレット（APIキー、トークン等）を含むコミットをブロックする pre-commit hook（`.githooks/pre-commit`）が自動設定されます。
+
 ### ローカル実行
+
+環境変数テンプレートをコピーして値を設定してください:
+
+```bash
+cp .env.example .env
+# .env に認証情報を記入（このファイルは絶対にコミットしないこと）
+```
 
 ```bash
 # 環境変数を設定

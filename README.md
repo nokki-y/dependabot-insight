@@ -227,11 +227,19 @@ If this is a concern, you can omit the `anthropic-api-key` input to disable the 
 ```bash
 git clone https://github.com/nokki-y/dependabot-insight.git
 cd dependabot-insight
-npm install
-npm run build
+npm install    # automatically sets up pre-commit hook via "prepare" script
 ```
 
+`npm install` automatically configures a pre-commit hook (`.githooks/pre-commit`) that blocks commits containing potential secrets (API keys, tokens, etc.).
+
 ### Running locally
+
+Copy the environment template and fill in your values:
+
+```bash
+cp .env.example .env
+# Edit .env with your credentials (never commit this file)
+```
 
 ```bash
 # Set environment variables
