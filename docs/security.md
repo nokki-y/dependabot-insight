@@ -98,13 +98,33 @@ Only sent when `anthropic-api-key` is provided. The exact data sent is the impac
 - `tsconfig.json` content in the target repository (parsed locally for path alias resolution)
 - All tokens and API keys (used only for authenticated API calls)
 
+## Environment variables used by this Action
+
+The complete list of environment variables that dependabot-insight reads is shown below. No other environment variables are accessed.
+
+| Variable | Sensitive | Purpose |
+|----------|-----------|---------|
+| `GITHUB_TOKEN` | **Yes** | Post/update PR comments, fetch PR metadata |
+| `ANTHROPIC_API_KEY` | **Yes** | Send QA report generation requests to Claude API |
+| `BASE_URL` | **Yes** | Base URL for GUI verification links in QA reports. May contain internal URLs, so masked in logs |
+| `REPOSITORY` | No | Target repository `owner/repo` (auto-set by GitHub Actions; public information) |
+| `PR_NUMBER` | No | PR number to analyze |
+| `DEPENDENCY_NAMES` | No | Package names being updated (comma-separated) |
+| `UPDATE_TYPE` | No | Update type (`patch` / `minor` / `major` / `unknown`) |
+| `AI_MODEL` | No | Claude model name to use |
+| `AI_LANGUAGE` | No | Language code for QA report |
+| `IMPACT_OUTPUT_PATH` | No | Temporary file path for impact analysis results (runner-local only) |
+| `DRY_RUN` | No | If `true`, skip posting PR comments |
+
+Variables marked "Sensitive" are subject to log masking and error message sanitization (details in the sections below).
+
 ## Built-in protections
 
-### 1. `GITHUB_TOKEN` / `ANTHROPIC_API_KEY` masking in logs
+### 1. `GITHUB_TOKEN` / `ANTHROPIC_API_KEY` / `BASE_URL` masking in logs
 
-`GITHUB_TOKEN` and `ANTHROPIC_API_KEY` are registered with GitHub Actions' `::add-mask::` mechanism at two levels:
+`GITHUB_TOKEN`, `ANTHROPIC_API_KEY`, and `BASE_URL` are registered with GitHub Actions' `::add-mask::` mechanism at two levels:
 
-- **action.yml**: Registers `GITHUB_TOKEN` and `ANTHROPIC_API_KEY` for masking before any step runs
+- **action.yml**: Registers all three values for masking before any step runs
 - **Scripts**: As a defense-in-depth measure, each script (`impact-analysis.ts`, `test-recommendation.ts`) registers the same values for masking at startup
 
 Once registered, GitHub Actions automatically replaces any occurrence of these values with `***` in all log output.

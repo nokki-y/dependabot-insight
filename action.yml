@@ -37,6 +37,9 @@ runs:
         if [ -n "${{ inputs.anthropic-api-key }}" ]; then
           echo "::add-mask::${{ inputs.anthropic-api-key }}"
         fi
+        if [ -n "${{ inputs.base-url }}" ]; then
+          echo "::add-mask::${{ inputs.base-url }}"
+        fi
 
     - name: Resolve PR info
       id: pr

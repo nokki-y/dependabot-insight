@@ -96,13 +96,33 @@
 - 対象リポジトリの `tsconfig.json` の内容（パスエイリアス解決のためにローカルで解析）
 - すべてのトークン・APIキー（認証済みAPI呼び出しにのみ使用）
 
+## この Action が扱う環境変数の一覧
+
+dependabot-insight が使用する環境変数は以下の通りです。これ以外の環境変数は読み取りません。
+
+| 環境変数 | 秘匿対象 | 用途 |
+|---------|----------|------|
+| `GITHUB_TOKEN` | **はい** | PRコメントの投稿・更新、PR情報の取得に使用 |
+| `ANTHROPIC_API_KEY` | **はい** | Claude API への QA レポート生成リクエストに使用 |
+| `BASE_URL` | **はい** | QA レポート内の GUI 確認用 URL のベース。社内 URL が含まれる可能性があるためマスキング対象 |
+| `REPOSITORY` | いいえ | 対象リポジトリの `owner/repo`（GitHub Actions が自動設定。公開情報） |
+| `PR_NUMBER` | いいえ | 解析対象の PR 番号 |
+| `DEPENDENCY_NAMES` | いいえ | 更新対象のパッケージ名（カンマ区切り） |
+| `UPDATE_TYPE` | いいえ | 更新種別（`patch` / `minor` / `major` / `unknown`） |
+| `AI_MODEL` | いいえ | Claude API に送信するモデル名 |
+| `AI_LANGUAGE` | いいえ | QA レポートの言語コード |
+| `IMPACT_OUTPUT_PATH` | いいえ | 影響解析結果の一時ファイルパス（ランナー内のみ） |
+| `DRY_RUN` | いいえ | `true` の場合、PRコメント投稿をスキップ |
+
+「秘匿対象」の環境変数は、ログへのマスキングとエラーメッセージのサニタイズの対象です（詳細は以下のセクションで説明）。
+
 ## 組み込みの保護機能
 
-### 1. ログにおける `GITHUB_TOKEN` / `ANTHROPIC_API_KEY` のマスキング
+### 1. ログにおける `GITHUB_TOKEN` / `ANTHROPIC_API_KEY` / `BASE_URL` のマスキング
 
-`GITHUB_TOKEN` と `ANTHROPIC_API_KEY` は GitHub Actions の `::add-mask::` メカニズムに2段階で登録されます:
+`GITHUB_TOKEN`、`ANTHROPIC_API_KEY`、`BASE_URL` は GitHub Actions の `::add-mask::` メカニズムに2段階で登録されます:
 
-- **action.yml**: すべてのステップ実行前に `GITHUB_TOKEN` と `ANTHROPIC_API_KEY` をマスク登録
+- **action.yml**: すべてのステップ実行前に上記3つの値をマスク登録
 - **スクリプト**: 多層防御として、各スクリプト（`impact-analysis.ts`, `test-recommendation.ts`）が起動時に同じ値をマスク登録
 
 マスク登録後、GitHub Actions はすべてのログ出力においてこれらの値を自動的に `***` に置換します。

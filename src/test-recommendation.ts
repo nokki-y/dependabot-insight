@@ -27,7 +27,7 @@ function sanitizeError(message: string): string {
   let sanitized = message;
   sanitized = sanitized.replace(/Bearer\s+[A-Za-z0-9_\-./+=]+/gi, "Bearer ***");
   sanitized = sanitized.replace(/(?:sk-|ghp_|gho_|ghs_|ghr_|sk-ant-)[A-Za-z0-9_\-]+/g, "***");
-  const secrets = [githubToken, anthropicApiKey].filter(Boolean);
+  const secrets = [githubToken, anthropicApiKey, baseUrl].filter(Boolean);
   for (const secret of secrets) {
     if (secret.length > 8) {
       sanitized = sanitized.replaceAll(secret, "***");
@@ -42,6 +42,9 @@ if (anthropicApiKey) {
 }
 if (githubToken) {
   console.log(`::add-mask::${githubToken}`);
+}
+if (baseUrl) {
+  console.log(`::add-mask::${baseUrl}`);
 }
 
 // ---------------------------------------------------------------------------
