@@ -11,47 +11,46 @@ This document describes the security architecture of dependabot-insight — what
 ## Data flow
 
 ```
-┌────────────────────────────────────────────────────────────────┐
-│  Target Repository (where this action is used)                 │
-│                                                                │
-│  package.json        ── Read to classify dependency            │
-│                         (dependencies / devDependencies)       │──┐
-│  package-lock.json   ── Read to trace transitive dependencies  │  │
-│  tsconfig.json       ── Read to resolve path aliases           │  │
-│  src/**/*.ts(x)      ── Read import/export declarations only   │  │
-│                         (via TypeScript AST parsing)           │  │
-└────────────────────────────────────────────────────────────────┘  │
-                                                                    │
-       Static analysis (runs in GitHub Actions runner)              │
-                                                                    ▼
-                                                 ┌──────────────────┐
-                                                 │  Impact Analysis │
-                                                 │                  │
-                                                 │  Extracts:       │
-                                                 │  - package names │
-                                                 │  - file paths    │
-                                                 │  - route paths   │
-                                                 │  - file counts   │
-                                                 │                  │
-                                                 │  Does NOT read   │
-                                                 │  source code     │
-                                                 │  content         │
-                                                 └────────┬─────────┘
-                               │
-                    ┌──────────┼──────────┐
-                    ▼                     ▼
-          ┌──────────────────┐  ┌──────────────────┐
-          │  GitHub API      │  │  Claude API      │
-          │                  │  │  (optional)      │
-          │  Receives:       │  │                  │
-          │  PR comment with │  │  Receives:       │
-          │  impact summary  │  │  impact summary  │
-          │                  │  │  (same as PR     │
-          │                  │  │   comment)       │
-          │                  │  │                  │
-          │                  │  │  Returns:        │
-          │                  │  │  QA report       │
-          └──────────────────┘  └──────────────────┘
+┌──────────────────────────────────────────────────────────┐
+│  Target Repository (where this action is used)           │
+│                                                          │
+│  Files read and their purpose:                           │
+│  - package.json       ... classify dependency            │
+│                          (dependencies / devDependencies) │
+│  - package-lock.json  ... trace transitive dependencies  │
+│  - tsconfig.json      ... resolve path aliases           │
+│  - src/**/*.ts(x)     ... collect import/export          │
+│                          declarations only               │
+│                          (via TypeScript AST parsing;     │
+│                           source code body is NOT read)   │
+└─────────────────────────┬────────────────────────────────┘
+                          │
+                          │ Static analysis (runs in GitHub Actions runner)
+                          ▼
+             ┌──────────────────────────┐
+             │  Impact Analysis         │
+             │                          │
+             │  Extracts:               │
+             │  - package names         │
+             │  - file paths            │
+             │  - route paths           │
+             │  - file counts           │
+             └────────────┬─────────────┘
+                          │
+               ┌──────────┼──────────┐
+               ▼                     ▼
+     ┌──────────────────┐  ┌──────────────────┐
+     │  GitHub API      │  │  Claude API      │
+     │                  │  │  (optional)      │
+     │                  │  │                  │
+     │  Sends:          │  │  Sends:          │
+     │  PR comment with │  │  impact summary  │
+     │  impact summary  │  │  (same as PR     │
+     │                  │  │   comment)       │
+     │                  │  │                  │
+     │                  │  │  Returns:        │
+     │                  │  │  QA report       │
+     └──────────────────┘  └──────────────────┘
 ```
 
 ### What is sent to GitHub API
