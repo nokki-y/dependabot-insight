@@ -21,8 +21,8 @@ This document describes the security architecture of dependabot-insight — what
 │  - tsconfig.json      ... resolve path aliases           │
 │  - src/**/*.ts(x)     ... collect import/export          │
 │                          declarations only               │
-│                          (via TypeScript AST parsing;     │
-│                           source code body is NOT read)   │
+│                          (full file read for AST parsing  │
+│                           but NOT sent externally)        │
 └─────────────────────────┬────────────────────────────────┘
                           │
                           │ Static analysis (runs in GitHub Actions runner)
@@ -35,6 +35,9 @@ This document describes the security architecture of dependabot-insight — what
              │  - file paths            │
              │  - route paths           │
              │  - file counts           │
+             │                          │
+             │  * Source code body is    │
+             │    NOT extracted or sent  │
              └────────────┬─────────────┘
                           │
                ┌──────────┼──────────┐
