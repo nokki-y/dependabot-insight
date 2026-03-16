@@ -223,7 +223,7 @@ sequenceDiagram
 
 | コンポーネント | 読み取り | 書き込み |
 |--------------|---------|---------|
-| **action.yml** | GitHub イベントコンテキスト | 環境変数: `DEPENDENCY_NAMES`, `UPDATE_TYPE`, `REPOSITORY`, `PR_NUMBER`, `GITHUB_TOKEN`, `PR_HEAD_SHA` |
+| **action.yml** | GitHub イベントコンテキスト | 環境変数: `DEPENDENCY_NAMES`, `UPDATE_TYPE`, `REPOSITORY`, `PR_NUMBER`, `GITHUB_TOKEN` |
 | **impact-analysis.ts** | 対象リポジトリ: `package.json`, `package-lock.json`, `tsconfig.json`, `src/**/*.ts(x)` | PRコメント（マーカー: `dependabot-impact-review`）+ `/tmp/dependabot-impact-analysis.md` |
 | **test-recommendation.ts** | `/tmp/dependabot-impact-analysis.md` + 環境変数: `ANTHROPIC_API_KEY`, `AI_MODEL`, `AI_LANGUAGE`, `BASE_URL` | Claude API（`POST /v1/messages`）→ PRコメント（マーカー: `dependabot-test-recommendation`） |
 

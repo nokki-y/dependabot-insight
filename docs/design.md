@@ -222,7 +222,7 @@ The sequence diagram in [Section 1](#1-pipeline-overview) shows the complete dat
 
 | Component | Reads | Writes |
 |-----------|-------|--------|
-| **action.yml** | GitHub event context | Environment variables: `DEPENDENCY_NAMES`, `UPDATE_TYPE`, `REPOSITORY`, `PR_NUMBER`, `GITHUB_TOKEN`, `PR_HEAD_SHA` |
+| **action.yml** | GitHub event context | Environment variables: `DEPENDENCY_NAMES`, `UPDATE_TYPE`, `REPOSITORY`, `PR_NUMBER`, `GITHUB_TOKEN` |
 | **impact-analysis.ts** | Target repo: `package.json`, `package-lock.json`, `tsconfig.json`, `src/**/*.ts(x)` | PR comment (marker: `dependabot-impact-review`) + `/tmp/dependabot-impact-analysis.md` |
 | **test-recommendation.ts** | `/tmp/dependabot-impact-analysis.md` + env vars: `ANTHROPIC_API_KEY`, `AI_MODEL`, `AI_LANGUAGE`, `BASE_URL` | Claude API (`POST /v1/messages`) → PR comment (marker: `dependabot-test-recommendation`) |
 
