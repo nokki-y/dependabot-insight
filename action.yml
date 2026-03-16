@@ -85,6 +85,7 @@ runs:
         else
           DEP_NAME=$(echo "$SLUG" | sed -E 's|-[0-9]+\.[0-9]+.*$||')
 
+          TITLE=$(gh pr view "$PR_NUMBER" --repo "${{ github.repository }}" --json title --jq '.title')
           OLD_VERSION=$(echo "$TITLE" | grep -oE 'from [0-9]+\.[0-9]+\.[0-9]+' | sed 's/from //' || true)
           NEW_VERSION=$(echo "$SLUG" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+$' || true)
 
