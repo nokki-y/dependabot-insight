@@ -149,7 +149,7 @@ Post `/dep-insight` as a comment on any Dependabot PR to trigger the analysis ma
 | `github-token` | Yes | — | GitHub token for posting PR comments |
 | `anthropic-api-key` | No | — | Anthropic API key for AI QA report generation. If omitted, only the static impact analysis is posted |
 | `ai-model` | No | `claude-sonnet-4-6` | Claude model to use for QA report generation |
-| `ai-language` | No | `en` | Language for the AI QA report. `en` (English) and `ja` (Japanese) have optimized prompts. Other language codes (e.g., `ko`, `zh`) are passed to Claude as-is |
+| `ai-language` | No | `en` | Language for both the impact analysis comment and the AI QA report. `en` (English) and `ja` (Japanese) are fully supported. Other language codes (e.g., `ko`, `zh`) affect the AI QA report only (passed to Claude as-is); the impact analysis comment falls back to English |
 | `base-url` | No | — | Base URL for GUI verification links in the QA report (e.g., Vercel preview URL) |
 
 ## How it works
