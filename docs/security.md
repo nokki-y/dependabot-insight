@@ -66,7 +66,7 @@ This document describes the security architecture of dependabot-insight — what
      └────────────────────────┘  └──────────────────────────────┘
 ```
 
-### What is sent to GitHub API
+### What is posted in PR comments
 
 - PR comments containing:
   - Package names and dependency classification
