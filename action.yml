@@ -62,12 +62,6 @@ runs:
 
           HEAD_SHA=$(gh pr view "$PR_NUMBER" --repo "${{ github.repository }}" --json headRefOid --jq '.headRefOid')
           echo "head_sha=${HEAD_SHA}" >> "$GITHUB_OUTPUT"
-        elif [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-          PR_NUMBER="${{ github.event.inputs.pr_number }}"
-          echo "number=${PR_NUMBER}" >> "$GITHUB_OUTPUT"
-
-          HEAD_SHA=$(gh pr view "$PR_NUMBER" --repo "${{ github.repository }}" --json headRefOid --jq '.headRefOid')
-          echo "head_sha=${HEAD_SHA}" >> "$GITHUB_OUTPUT"
         fi
 
     - name: Fetch Dependabot metadata
@@ -79,7 +73,7 @@ runs:
 
     - name: Resolve dependency names from branch
       id: branch-metadata
-      if: github.event_name != 'pull_request'
+      if: github.event_name == 'issue_comment'
       shell: bash
       env:
         GH_TOKEN: ${{ inputs.github-token }}
