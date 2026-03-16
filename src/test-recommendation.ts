@@ -64,6 +64,10 @@ function buildSystemPrompt(): string {
     ? `\n\n## GUI Verification URLs\nWhen the QA plan includes GUI verification, construct URLs using this base: \`${baseUrl}\`\nExample: \`${baseUrl}/admin/surveys\` for the surveys management page.\nInclude clickable URLs in the verification steps.`
     : "";
 
+  const baseUrlInstruction = baseUrl
+    ? `For GUI checks, construct URLs using this base: \`${baseUrl}\` (e.g., \`${baseUrl}/admin/surveys\`).`
+    : `For GUI checks, use \`<pr-preview-url>/<route-path>\` as the URL format (the reviewer will substitute their own preview URL).`;
+
   return `You are a software engineer creating a quality assurance report based on Dependabot PR impact analysis results.
 The reader of this report is a **reviewer deciding whether to merge this PR**.
 
@@ -75,76 +79,30 @@ ${getLanguageInstruction()}
 2. **If necessary, what should be tested?** — Test cases logically derived from the impact scope
 3. **How to verify each test case?** — GUI verification with URLs and steps, or CLI/CI verification steps
 
+## IMPORTANT: The reviewer will verify this report
+
+The reviewer does not blindly trust AI output. For each judgment in the report (package necessity, impact scope, etc.), you MUST include verification commands that the reviewer can run themselves to confirm.
+
 ## Report Structure
 
-1. **Package Necessity** — Why this package is needed (based on the "Dependency Classification" from the impact analysis)
+1. **Package Necessity** — Why this package is needed (based on the "Dependency Classification" from the impact analysis), with verification commands
 2. **Change Summary** — What is being updated
 3. **Impact Scope** — Where the change has impact (based on the analysis results)
-4. **Risk Assessment** — Quantitative rubric-based scoring
-5. **QA Plan** — Test cases with concrete verification steps
-6. **Assumptions** — What this QA plan relies on
-
-## Risk Assessment Rubric
-
-Score each of 5 axes, then sum for the overall risk level.
-
-### Axis 1: Dependency Type
-| Score | Condition |
-|-------|-----------|
-| 3 | Directly imported in source code (dependencies) |
-| 2 | devDependencies (affects build/test) |
-| 1 | Transitive dependency only (internal dep of another package) |
-| 0 | Not found in dependency tree |
-
-### Axis 2: Library Category
-| Score | Condition |
-|-------|-----------|
-| 3 | Runtime UI library (DOM, rendering, state management) / Security library (sanitization, auth, crypto) |
-| 2 | Data processing (validation, date, formatting) / API/communication (HTTP client, DB client) |
-| 1 | Monitoring/logging (Sentry, DataDog, etc.) |
-| 0 | Build/dev tools (webpack, rollup, terser, eslint, etc.) |
-
-### Axis 3: Impacted Pages
-| Score | Condition |
-|-------|-----------|
-| 3 | 10+ pages |
-| 2 | 3–9 pages |
-| 1 | 1–2 pages |
-| 0 | 0 pages |
-
-### Axis 4: Update Type
-| Score | Condition |
-|-------|-----------|
-| 3 | major |
-| 1 | minor |
-| 0 | patch / unknown |
-
-### Axis 5: Feature Criticality
-| Score | Condition |
-|-------|-----------|
-| 3 | Core user-facing features (responses, auth, data entry) |
-| 2 | Admin features (list, detail, CRUD) |
-| 1 | Supporting features (PDF generation, CSV export, settings) |
-| 0 | Dev/internal tools only |
-
-### Overall Risk
-| Total Score | Risk Level |
-|-------------|------------|
-| 10+ | 🔴 High |
-| 5–9 | 🟡 Medium |
-| 0–4 | 🟢 Low |
+4. **QA Plan** — Test cases with concrete verification steps
+5. **Assumptions** — What this QA plan relies on
 
 ## QA Plan Guidelines
 
 - All verification items MUST be logically derived from the impact scope (don't test what's not impacted, don't miss what is)
-- Keep to 5 items or fewer (1–2 items is sufficient for 🟢 Low risk)
+- Keep to 5 items or fewer (1–2 items is sufficient when impact scope is limited)
 - Each item must include:
   - **Verification type**: Build check / GUI check / Functional check / Security check
-  - **How to verify**: Concrete steps${baseUrl ? `\n    - For GUI checks: include the full URL (e.g., \`${baseUrl}/<route>\`) and step-by-step instructions` : "\n    - For GUI checks: include the route path and step-by-step instructions"}
+  - **How to verify**: Concrete steps
+    - ${baseUrlInstruction}
     - For build checks: specify the CI job name or local command
     - For functional checks: specify the operation steps or test command
   - **Expected result**: What normal behavior looks like
-- For devDependencies or transitive-only packages, impact is limited to the build pipeline — "CI passing" is sufficient for QA${baseUrlGuidance}`;
+- For devDependencies or transitive-only packages, impact is limited to the build pipeline — "CI passing" is sufficient for QA`;
 }
 
 async function callClaude(userMessage: string): Promise<string> {
@@ -256,19 +214,50 @@ async function main() {
     process.exit(0);
   }
 
+  const baseUrlPlaceholder = baseUrl || "<pr-preview-url>";
+
   const userPrompt = `Below is the impact analysis result for a Dependabot library update PR:
 
 ---
 ${impactAnalysis}
 ---
 
-Based on this analysis, create a QA report. Output ONLY the following Markdown structure (no preamble or extra explanation):
+Based on this analysis, create a QA report.${baseUrl ? "" : ` Use \`<pr-preview-url>\` as the base URL placeholder for GUI verification (the reviewer will substitute their own preview URL).`}
+Output ONLY the following Markdown structure (no preamble or extra explanation):
 
 ## 🧪 QA Report
 
 ### 1. Package Necessity
 
-(Is this package needed? Based on the dependency classification, explain why it exists and what would break if removed. If it appears unnecessary, recommend removal.)
+(Based on the "Dependency Classification" from the impact analysis, explain why this package is needed and what would break if removed.
+- dependencies → needed at runtime
+- devDependencies → needed for build/development
+- transitive → name the packages that depend on it; removing it would break them
+- not found → recommend cleanup with npm prune or regenerating package-lock.json
+If it appears unnecessary, recommend removal.)
+
+**Verification:**
+
+(Include 1–2 commands the reviewer can run to verify the above judgment. Choose the most appropriate for the dependency type:
+
+- For dependencies / devDependencies:
+  \`\`\`bash
+  cat package.json | grep "package-name"
+  grep -r "package-name" src/ --include="*.ts" --include="*.tsx" -l
+  \`\`\`
+
+- For transitive:
+  \`\`\`bash
+  npm ls package-name
+  \`\`\`
+
+- For not found:
+  \`\`\`bash
+  npm ls package-name
+  npm prune
+  \`\`\`
+
+Replace "package-name" with the actual package name.)
 
 ### 2. Change Summary
 
@@ -280,34 +269,23 @@ Based on the impact analysis:
 
 | Scope | Range | Details |
 |-------|-------|---------|
-| Direct | (file count) files, (page count) pages | (list files/pages briefly, or "None") |
-| Indirect | (via packages, or "None") | (indirect page count, or "None") |
+| Direct import | (file count) files, (page count) pages | (list files/pages briefly, or "None") |
+| Via other packages | (via package names, or "None") | (page count via those packages, or "None") |
 
-(If direct impact files exist, explain their role in the project in 1–2 sentences)
+(If direct import files exist, explain their role in the project in 1–2 sentences)
 
-### 4. Risk Assessment
-
-| Axis | Score | Rationale |
-|------|-------|-----------|
-| Dependency type | ?/3 | (direct import / devDependency / transitive / not found) |
-| Library category | ?/3 | (category and reasoning) |
-| Impacted pages | ?/3 | (page count) |
-| Update type | ?/3 | (major/minor/patch/unknown) |
-| Feature criticality | ?/3 | (affected features and user impact) |
-| **Total** | **?/15** | **🔴 High / 🟡 Medium / 🟢 Low** |
-
-### 5. QA Plan
+### 4. QA Plan
 
 To verify the impact scope from Section 3:
 
 | No. | Target | Type | How to Verify | Expected Result |
 |-----|--------|------|---------------|-----------------|
-| 1 | (derived from impact scope) | (Build/GUI/Functional/Security) | (concrete steps${baseUrl ? `, with full URLs like ${baseUrl}/<route>` : ""}) | (normal behavior) |
+| 1 | (derived from impact scope) | (Build/GUI/Functional/Security) | (concrete steps. For GUI: \`${baseUrlPlaceholder}/<route>\` with operation steps. For build: CI job name or command) | (normal behavior) |
 | ... | ... | ... | ... | ... |
 
-(Explain in 1–2 sentences why these items provide sufficient quality assurance)
+(Explain in 1–2 sentences why these items provide sufficient quality assurance. Keep to 5 items or fewer)
 
-### 6. Assumptions
+### 5. Assumptions
 
 (1–3 bullet points of assumptions this QA plan relies on)`;
 
