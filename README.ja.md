@@ -26,22 +26,22 @@ Dependabot が PR を作成すると、この Action が自動的に以下を実
 >
 > | パッケージ | 依存区分 | 説明 |
 > |---|---|---|
-> | `dompurify` | **dependencies** | package.json の dependencies に記載。ランタイムで使用される |
+> | `date-fns` | **dependencies** | package.json の dependencies に記載。ランタイムで使用される |
 >
 > ### 影響サマリー
 >
 > | 項目 | 値 |
 > |------|-----|
-> | 更新種別 | `patch` |
-> | ソースコードで直接 import しているファイル数 | 3 |
-> | 影響が到達するページ数 | 5 |
+> | 更新種別 | `minor` |
+> | ソースコードで直接 import しているファイル数 | 4 |
+> | 影響が到達するページ数 | 3 |
 > | 影響が到達するAPIルート数 | 0 |
 >
 > ### 影響が到達するページ
 >
-> - `/admin/surveys/:id/edit`
-> - `/admin/reports/:id`
-> - ...
+> - `/dashboard`
+> - `/users/:id`
+> - `/settings`
 
 </details>
 
@@ -51,33 +51,33 @@ Dependabot が PR を作成すると、この Action が自動的に以下を実
 > ## 品質保証レポート
 >
 > ### 1. パッケージの必要性
-> `dompurify` は `dependencies`（ランタイム）に記載されています。HTML サニタイズによる XSS 対策に使用されており、削除するとセキュリティ保護が無効になります。
+> `date-fns` は `dependencies`（ランタイム）に記載されています。日付のフォーマットや操作に使用されており、削除すると複数のページで日付表示が壊れます。
 >
 > **検証手順:**
 > ```bash
-> cat package.json | grep "dompurify"
-> grep -r "dompurify" src/ --include="*.ts" --include="*.tsx" -l
+> cat package.json | grep "date-fns"
+> grep -r "date-fns" src/ --include="*.ts" --include="*.tsx" -l
 > ```
 >
 > ### 2. 変更内容
-> `dompurify` の patch 更新（3.3.1 → 3.3.2）。DOMPurify は HTML サニタイズライブラリです。
+> `date-fns` の minor 更新（3.6.0 → 3.7.0）。date-fns は日付ユーティリティライブラリです。
 >
 > ### 3. 影響範囲
 >
 > | 区分 | 範囲 | 詳細 |
 > |------|------|------|
-> | 直接 import | 3ファイル, 5ページ | `src/components/RichTextEditor.tsx` 等 |
+> | 直接 import | 4ファイル, 3ページ | `src/utils/format-date.ts`、`src/components/DateDisplay.tsx` 等 |
 > | 他パッケージ経由 | なし | なし |
 >
 > ### 4. 品質保証計画
 >
 > | No. | 検証対象 | 検証区分 | 確認方法 | 期待結果 |
 > |-----|---------|---------|---------|---------|
-> | 1 | リッチテキストエディタ | 画面確認 | `<pr-preview-url>/admin/surveys/:id/edit` を開き、`<script>` タグを含む HTML を入力 | コンテンツがサニタイズされ、script タグが除去されること |
-> | 2 | レポート表示 | 画面確認 | `<pr-preview-url>/admin/reports/:id` を開く | HTML コンテンツが XSS なく表示されること |
+> | 1 | ダッシュボード | 画面確認 | `<pr-preview-url>/dashboard` を開き、日付カラムを確認 | 日付が正しいフォーマットで表示されること |
+> | 2 | ユーザー詳細 | 画面確認 | `<pr-preview-url>/users/1` を開く | 作成日時・更新日時が正しく表示されること |
 >
 > ### 5. 前提条件
-> - 静的解析が `dompurify` を import している全ファイルを正しく特定していること
+> - 静的解析が `date-fns` を import している全ファイルを正しく特定していること
 
 </details>
 

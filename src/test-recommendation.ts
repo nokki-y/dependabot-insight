@@ -64,11 +64,11 @@ function getLanguageInstruction(): string {
 // ---------------------------------------------------------------------------
 function buildSystemPrompt(): string {
   const baseUrlGuidance = baseUrl
-    ? `\n\n## GUI Verification URLs\nWhen the QA plan includes GUI verification, construct URLs using this base: \`${baseUrl}\`\nExample: \`${baseUrl}/admin/surveys\` for the surveys management page.\nInclude clickable URLs in the verification steps.`
+    ? `\n\n## GUI Verification URLs\nWhen the QA plan includes GUI verification, construct URLs using this base: \`${baseUrl}\`\nExample: \`${baseUrl}/dashboard\` for the dashboard page.\nInclude clickable URLs in the verification steps.`
     : "";
 
   const baseUrlInstruction = baseUrl
-    ? `For GUI checks, construct URLs using this base: \`${baseUrl}\` (e.g., \`${baseUrl}/admin/surveys\`).`
+    ? `For GUI checks, construct URLs using this base: \`${baseUrl}\` (e.g., \`${baseUrl}/dashboard\`).`
     : `For GUI checks, use \`<pr-preview-url>/<route-path>\` as the URL format (the reviewer will substitute their own preview URL).`;
 
   return `You are a software engineer creating a quality assurance report based on Dependabot PR impact analysis results.

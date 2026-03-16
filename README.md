@@ -26,22 +26,22 @@ The results are posted as PR comments, giving reviewers everything they need to 
 >
 > | Package | Classification | Description |
 > |---|---|---|
-> | `dompurify` | **dependencies** | Listed in package.json dependencies. Used at runtime |
+> | `date-fns` | **dependencies** | Listed in package.json dependencies. Used at runtime |
 >
 > ### Impact Summary
 >
 > | Item | Value |
 > |------|-------|
-> | Update type | `patch` |
-> | Files that directly import this package | 3 |
-> | Pages impacted | 5 |
+> | Update type | `minor` |
+> | Files that directly import this package | 4 |
+> | Pages impacted | 3 |
 > | API routes impacted | 0 |
 >
 > ### Impacted Pages
 >
-> - `/admin/surveys/:id/edit`
-> - `/admin/reports/:id`
-> - ...
+> - `/dashboard`
+> - `/users/:id`
+> - `/settings`
 
 </details>
 
@@ -51,33 +51,33 @@ The results are posted as PR comments, giving reviewers everything they need to 
 > ## QA Report
 >
 > ### 1. Package Necessity
-> `dompurify` is listed in `dependencies` (runtime). It is used for HTML sanitization to prevent XSS attacks. Removing it would break security protections.
+> `date-fns` is listed in `dependencies` (runtime). It is used for date formatting and manipulation across the application. Removing it would break date display in multiple pages.
 >
 > **Verification:**
 > ```bash
-> cat package.json | grep "dompurify"
-> grep -r "dompurify" src/ --include="*.ts" --include="*.tsx" -l
+> cat package.json | grep "date-fns"
+> grep -r "date-fns" src/ --include="*.ts" --include="*.tsx" -l
 > ```
 >
 > ### 2. Change Summary
-> `dompurify` patch update (3.3.1 → 3.3.2). DOMPurify is an HTML sanitization library.
+> `date-fns` minor update (3.6.0 → 3.7.0). date-fns is a date utility library.
 >
 > ### 3. Impact Scope
 >
 > | Scope | Range | Details |
 > |-------|-------|---------|
-> | Direct import | 3 files, 5 pages | `src/components/RichTextEditor.tsx`, ... |
+> | Direct import | 4 files, 3 pages | `src/utils/format-date.ts`, `src/components/DateDisplay.tsx`, ... |
 > | Via other packages | None | None |
 >
 > ### 4. QA Plan
 >
 > | No. | Target | Type | How to Verify | Expected Result |
 > |-----|--------|------|---------------|-----------------|
-> | 1 | Rich text editor | GUI check | Open `<pr-preview-url>/admin/surveys/:id/edit`, enter HTML with `<script>` tags | Content is sanitized, script tags are removed |
-> | 2 | Report viewer | GUI check | Open `<pr-preview-url>/admin/reports/:id` | HTML content renders without XSS |
+> | 1 | Dashboard | GUI check | Open `<pr-preview-url>/dashboard`, verify date columns | Dates display in correct format |
+> | 2 | User detail | GUI check | Open `<pr-preview-url>/users/1` | Created/updated timestamps display correctly |
 >
 > ### 5. Assumptions
-> - Static analysis correctly identified all files importing `dompurify`
+> - Static analysis correctly identified all files importing `date-fns`
 
 </details>
 
