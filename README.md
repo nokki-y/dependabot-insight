@@ -51,25 +51,33 @@ The results are posted as PR comments, giving reviewers everything they need to 
 > ## QA Report
 >
 > ### 1. Package Necessity
-> `dompurify` is a runtime dependency used for HTML sanitization. Removing it would break XSS protection.
+> `dompurify` is listed in `dependencies` (runtime). It is used for HTML sanitization to prevent XSS attacks. Removing it would break security protections.
 >
-> ### 2. Risk Assessment
+> **Verification:**
+> ```bash
+> cat package.json | grep "dompurify"
+> grep -r "dompurify" src/ --include="*.ts" --include="*.tsx" -l
+> ```
 >
-> | Axis | Score | Rationale |
-> |------|-------|-----------|
-> | Dependency type | 3/3 | Directly imported in source code |
-> | Library category | 3/3 | Security library (sanitization) |
-> | Reachable pages | 2/3 | 5 pages |
-> | Update type | 0/3 | patch |
-> | Feature criticality | 3/3 | Core security function |
-> | **Total** | **11/15** | **High** |
+> ### 2. Change Summary
+> `dompurify` patch update (3.3.1 → 3.3.2). DOMPurify is an HTML sanitization library.
 >
-> ### 3. QA Plan
+> ### 3. Impact Scope
 >
-> | No. | Target | Method | Expected Result |
-> |-----|--------|--------|-----------------|
-> | 1 | Rich text editor | Open `/admin/surveys/:id/edit`, enter HTML content | Content is sanitized correctly |
-> | ... | ... | ... | ... |
+> | Scope | Range | Details |
+> |-------|-------|---------|
+> | Direct import | 3 files, 5 pages | `src/components/RichTextEditor.tsx`, ... |
+> | Via other packages | None | None |
+>
+> ### 4. QA Plan
+>
+> | No. | Target | Type | How to Verify | Expected Result |
+> |-----|--------|------|---------------|-----------------|
+> | 1 | Rich text editor | GUI check | Open `<pr-preview-url>/admin/surveys/:id/edit`, enter HTML with `<script>` tags | Content is sanitized, script tags are removed |
+> | 2 | Report viewer | GUI check | Open `<pr-preview-url>/admin/reports/:id` | HTML content renders without XSS |
+>
+> ### 5. Assumptions
+> - Static analysis correctly identified all files importing `dompurify`
 
 </details>
 
