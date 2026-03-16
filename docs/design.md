@@ -52,10 +52,19 @@ Resolve PR metadata, extract dependency information, and execute the two analysi
 
 **Why composite action (not JavaScript action)?**
 
-A JavaScript action would require bundling with `@vercel/ncc` and committing a `dist/` directory. The composite action approach:
-- Keeps the source TypeScript files as the single source of truth
-- Avoids build artifacts in the repository
-- Allows `npm ci --production` to resolve dependencies at runtime
+GitHub Actions supports two approaches for TypeScript-based actions:
+
+| | JavaScript action | Composite action (adopted) |
+|---|---|---|
+| Build step | Required (`@vercel/ncc` bundle → `dist/index.js`) | Not required |
+| Build artifacts in repo | `dist/` must be committed | None |
+| Source/artifact sync risk | Source and `dist/` can diverge if build is forgotten | No risk — source IS the executed code |
+| PR diff noise | `dist/index.js` (thousands of lines) in every PR | None |
+| Startup overhead | None | `npm ci --production` (~3-5 seconds) |
+
+The startup overhead of `npm ci` is the only disadvantage of the composite approach. However, this Action's total execution time is 20-50 seconds (import graph construction ~5-15s + Claude API call ~10-30s), so 3-5 seconds of `npm ci` accounts for roughly 10% of the total — a negligible cost for an asynchronous CI task.
+
+The composite action approach was chosen because it eliminates build artifact management overhead with minimal performance impact.
 
 **Why `dependabot/fetch-metadata` for `pull_request` but branch name parsing for other events?**
 

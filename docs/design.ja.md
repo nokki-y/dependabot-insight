@@ -52,10 +52,19 @@ PR メタデータの解決、依存パッケージ情報の抽出、2つの解�
 
 **なぜ composite action（JavaScript action ではなく）か？**
 
-JavaScript action の場合、`@vercel/ncc` でバンドルして `dist/` ディレクトリをリポジトリにコミットする必要がある。composite action アプローチでは:
-- TypeScript ソースファイルが唯一の正（single source of truth）
-- ビルド成果物をリポジトリに含めない
-- `npm ci --production` で実行時に依存を解決
+GitHub Actions では TypeScript ベースの Action に2つのアプローチがある:
+
+| | JavaScript action | Composite action（採用） |
+|---|---|---|
+| ビルドステップ | 必要（`@vercel/ncc` でバンドル → `dist/index.js`） | 不要 |
+| リポジトリ内のビルド成果物 | `dist/` のコミットが必要 | なし |
+| ソースと成果物の乖離リスク | ビルド忘れで `dist/` とソースが乖離する可能性 | リスクなし — ソースがそのまま実行される |
+| PR の差分ノイズ | `dist/index.js`（数千行）が毎回 PR に含まれる | なし |
+| 起動オーバーヘッド | なし | `npm ci --production`（約3-5秒） |
+
+composite action の唯一のデメリットは `npm ci` の起動オーバーヘッドである。しかし、この Action の総実行時間は20-50秒（import グラフ構築 約5-15秒 + Claude API 呼び出し 約10-30秒）であり、`npm ci` の3-5秒は全体の約10%に過ぎない。非同期で実行される CI タスクとしては無視できるコストである。
+
+ビルド成果物管理のオーバーヘッドをなくし、パフォーマンスへの影響が軽微であるため、composite action を採用した。
 
 **なぜ `pull_request` では `dependabot/fetch-metadata` を使い、他のイベントではブランチ名パースを使うか？**
 
