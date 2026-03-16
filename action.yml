@@ -16,7 +16,7 @@ inputs:
   ai-model:
     description: 'Claude model to use for QA report generation'
     required: false
-    default: 'claude-sonnet-4-20250514'
+    default: 'claude-sonnet-4-6'
   ai-language:
     description: 'Language for the AI QA report (e.g., en, ja)'
     required: false

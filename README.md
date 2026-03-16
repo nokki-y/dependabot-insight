@@ -125,7 +125,7 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
-          ai-model: 'claude-sonnet-4-6'          # Claude model (default: claude-sonnet-4-20250514)
+          ai-model: 'claude-sonnet-4-6'          # Claude model (default: claude-sonnet-4-6)
           ai-language: 'ja'                        # QA report language (default: en)
           base-url: 'https://my-app-pr-123.vercel.app'  # For GUI verification URLs
 ```
@@ -140,7 +140,7 @@ Post `/dep-insight` as a comment on any Dependabot PR to trigger the analysis ma
 |-------|----------|---------|-------------|
 | `github-token` | Yes | — | GitHub token for posting PR comments |
 | `anthropic-api-key` | No | — | Anthropic API key for AI QA report generation. If omitted, only the static impact analysis is posted |
-| `ai-model` | No | `claude-sonnet-4-20250514` | Claude model to use for QA report generation |
+| `ai-model` | No | `claude-sonnet-4-6` | Claude model to use for QA report generation |
 | `ai-language` | No | `en` | Language for the AI QA report (`en`, `ja`, etc.) |
 | `base-url` | No | — | Base URL for GUI verification links in the QA report (e.g., Vercel preview URL) |
 

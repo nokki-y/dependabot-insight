@@ -126,7 +126,7 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
-          ai-model: 'claude-sonnet-4-6'          # Claude モデル（デフォルト: claude-sonnet-4-20250514）
+          ai-model: 'claude-sonnet-4-6'          # Claude モデル（デフォルト: claude-sonnet-4-6）
           ai-language: 'ja'                        # QA レポートの言語（デフォルト: en）
           base-url: 'https://my-app-pr-123.vercel.app'  # GUI 確認用 URL
 ```
@@ -141,7 +141,7 @@ Dependabot PR に `/dep-insight` とコメントすると、手動で解析を�
 |-----------|------|-----------|------|
 | `github-token` | Yes | — | PR コメント投稿用の GitHub トークン |
 | `anthropic-api-key` | No | — | AI 品質保証レポート生成用の Anthropic API キー。省略時は静的解析のみ投稿 |
-| `ai-model` | No | `claude-sonnet-4-20250514` | QA レポート生成に使用する Claude モデル |
+| `ai-model` | No | `claude-sonnet-4-6` | QA レポート生成に使用する Claude モデル |
 | `ai-language` | No | `en` | AI レポートの言語（`en`, `ja` 等） |
 | `base-url` | No | — | GUI 確認用リンクのベース URL（例: Vercel プレビュー URL） |
 

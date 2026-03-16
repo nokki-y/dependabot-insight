@@ -15,7 +15,7 @@ const githubToken = process.env.GITHUB_TOKEN ?? "";
 const repository = process.env.REPOSITORY ?? "";
 const prNumber = Number(process.env.PR_NUMBER ?? "0");
 const dryRun = process.env.DRY_RUN === "true";
-const aiModel = process.env.AI_MODEL || "claude-sonnet-4-20250514";
+const aiModel = process.env.AI_MODEL || "claude-sonnet-4-6";
 const aiLanguage = process.env.AI_LANGUAGE || "en";
 const baseUrl = process.env.BASE_URL || "";
 
