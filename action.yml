@@ -115,6 +115,7 @@ runs:
         DEPENDENCY_NAMES: ${{ steps.metadata.outputs.dependency-names || steps.branch-metadata.outputs.dependency-names }}
         UPDATE_TYPE: ${{ steps.metadata.outputs.update-type || 'unknown' }}
         IMPACT_OUTPUT_PATH: /tmp/dependabot-impact-analysis.md
+        AI_LANGUAGE: ${{ inputs.ai-language }}
       run: |
         "${{ github.action_path }}/node_modules/.bin/tsx" "${{ github.action_path }}/src/impact-analysis.ts"
 

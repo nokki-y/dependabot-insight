@@ -110,6 +110,7 @@ const prNumber = Number(process.env.PR_NUMBER ?? "0");
 const githubToken = process.env.GITHUB_TOKEN ?? "";
 const updateType = process.env.UPDATE_TYPE ?? "unknown";
 const dryRun = process.env.DRY_RUN === "true";
+const aiLanguage = process.env.AI_LANGUAGE ?? "en";
 
 if (dependencyNames.length === 0) {
   console.error("DEPENDENCY_NAMES is empty — nothing to analyze.");
@@ -690,22 +691,101 @@ async function upsertComment(
 }
 
 // ---------------------------------------------------------------------------
-// Comment builder
+// Comment builder (i18n)
 // ---------------------------------------------------------------------------
 
+const i18n = {
+  en: {
+    title: "## 🔍 Dependabot Impact Analysis",
+    classificationHeading: "### Dependency Classification",
+    classificationColumns: "| Package | Classification | Description |",
+    classificationSeparator: "|---|---|---|",
+    dependencies: "Listed in package.json dependencies. Used at runtime",
+    devDependencies: "Listed in package.json devDependencies. Used only during build/development",
+    transitive: (pkgs: string) => `Not listed in package.json. Internal dependency of ${pkgs}`,
+    notFound: "Not found in package.json or dependency tree",
+    summaryHeading: "### Impact Summary",
+    summaryColumns: "| Item | Value |",
+    summarySeparator: "|------|-------|",
+    updateType: "Update type",
+    directImportFiles: "Files that directly import this package",
+    pagesImpacted: "Pages impacted",
+    apiRoutesImpacted: "API routes impacted",
+    pagesViaOther: "Pages impacted via other packages",
+    apiRoutesViaOther: "API routes impacted via other packages",
+    directImportSummary: "Files that directly import this package",
+    andMore: (n: number) => `... and ${n} more`,
+    impactedPages: "### Impacted Pages",
+    impactedApiRoutes: "### Impacted API Routes",
+    noImpact: "> ℹ️ **No direct source code impact detected.**",
+    noImpactDevDeps: "> This package is only used during build/development. It does not affect runtime behavior. Quality can be verified by CI build and test passing.",
+    noImpactTransitive: "> This package is an internal dependency of other npm packages (removing it would break them). Since it is not directly imported in source code, runtime impact is limited unless the package's internal behavior has changed.",
+    noImpactDefault: "> No files directly import this package, and no reachable pages were detected via indirect dependency analysis.",
+    indirectHeading: "### Impact via Other Packages",
+    indirectDescription: (pkgs: string) => `The following project packages internally depend on ${pkgs}:`,
+    indirectColumns: "| Via Package | Importing Files | Pages | API Routes |",
+    indirectSeparator: "|---|---|---|---|",
+    indirectPagesSummary: "Impacted pages (via other packages)",
+    indirectApiRoutesSummary: "Impacted API routes (via other packages)",
+    disclaimer: "> ⚠️ This is a static analysis estimate. Dynamic segments and runtime conditional logic are not considered.",
+  },
+  ja: {
+    title: "## 🔍 Dependabot 影響解析",
+    classificationHeading: "### パッケージの位置づけ",
+    classificationColumns: "| パッケージ | 依存区分 | 説明 |",
+    classificationSeparator: "|---|---|---|",
+    dependencies: "package.json の dependencies に記載。ランタイムで使用される",
+    devDependencies: "package.json の devDependencies に記載。ビルド・開発時のみ使用",
+    transitive: (pkgs: string) => `package.json には未記載。${pkgs} が内部で使用`,
+    notFound: "package.json にも package-lock.json の依存ツリーにも見つからない",
+    summaryHeading: "### 影響サマリー",
+    summaryColumns: "| 項目 | 値 |",
+    summarySeparator: "|------|-----|",
+    updateType: "更新種別",
+    directImportFiles: "ソースコードで直接 import しているファイル数",
+    pagesImpacted: "影響が到達するページ数",
+    apiRoutesImpacted: "影響が到達するAPIルート数",
+    pagesViaOther: "他パッケージ経由で影響が到達するページ数",
+    apiRoutesViaOther: "他パッケージ経由で影響が到達するAPIルート数",
+    directImportSummary: "直接 import しているファイル一覧",
+    andMore: (n: number) => `... 他 ${n} 件`,
+    impactedPages: "### 影響が到達するページ",
+    impactedApiRoutes: "### 影響が到達するAPIルート",
+    noImpact: "> ℹ️ **ソースコードへの直接的な影響はありません。**",
+    noImpactDevDeps: "> このパッケージは開発・ビルド時にのみ使用されるため、ランタイムの動作には影響しません。CI のビルド・テスト通過をもって品質を確認できます。",
+    noImpactTransitive: "> このパッケージは他のnpmパッケージの内部依存として必要です（削除するとそれらのパッケージが動作しなくなります）。ソースコードで直接参照されていないため、パッケージ内部の処理変更がない限りランタイムへの影響は限定的です。",
+    noImpactDefault: "> ソースコードで直接 import されておらず、他パッケージ経由でも影響が到達するページは検出されませんでした。",
+    indirectHeading: "### 他パッケージ経由の影響",
+    indirectDescription: (pkgs: string) => `${pkgs} を内部で使用しているパッケージ経由で、以下のページ・APIルートに影響が到達します:`,
+    indirectColumns: "| 経由パッケージ | import しているファイル数 | 影響ページ数 | 影響APIルート数 |",
+    indirectSeparator: "|---|---|---|---|",
+    indirectPagesSummary: "影響が到達するページ一覧（他パッケージ経由）",
+    indirectApiRoutesSummary: "影響が到達するAPIルート一覧（他パッケージ経由）",
+    disclaimer: "> ⚠️ 静的解析ベースの推定です。Dynamic Segments やランタイム条件分岐は考慮されていません。",
+  },
+};
+
+type I18nLabels = typeof i18n.en;
+
+function getLabels(): I18nLabels {
+  if (aiLanguage === "ja") return i18n.ja;
+  return i18n.en;
+}
+
 function classificationLabel(cls: DependencyClassification): { label: string; description: string } {
+  const t = getLabels();
   switch (cls.type) {
     case "dependencies":
-      return { label: "**dependencies**", description: "Listed in package.json dependencies. Used at runtime" };
+      return { label: "**dependencies**", description: t.dependencies };
     case "devDependencies":
-      return { label: "**devDependencies**", description: "Listed in package.json devDependencies. Used only during build/development" };
+      return { label: "**devDependencies**", description: t.devDependencies };
     case "transitive":
       return {
         label: "**transitive**",
-        description: `Not listed in package.json. Internal dependency of ${cls.dependedBy.map((v) => `\`${v}\``).join(", ")}`,
+        description: t.transitive(cls.dependedBy.map((v) => `\`${v}\``).join(", ")),
       };
     case "not-found":
-      return { label: "**unknown**", description: "Not found in package.json or dependency tree" };
+      return { label: "**unknown**", description: t.notFound };
   }
 }
 
@@ -719,19 +799,20 @@ function buildComment(params: {
   indirectImpacts: IndirectImpact[];
 }): string {
   const { dependencyNames: deps, updateType: uType, classifications, impactedFiles, pageRoutes, apiRoutes, indirectImpacts } = params;
+  const t = getLabels();
 
   const indirectPageRoutes = [...new Set(indirectImpacts.flatMap((i) => i.pageRoutes))].sort();
   const indirectApiRoutes = [...new Set(indirectImpacts.flatMap((i) => i.apiRoutes))].sort();
 
   const lines: string[] = [];
-  lines.push("## 🔍 Dependabot Impact Analysis");
+  lines.push(t.title);
   lines.push("");
 
   // ----- Dependency classification -----
-  lines.push("### Dependency Classification");
+  lines.push(t.classificationHeading);
   lines.push("");
-  lines.push("| Package | Classification | Description |");
-  lines.push("|---|---|---|");
+  lines.push(t.classificationColumns);
+  lines.push(t.classificationSeparator);
   for (const dep of deps) {
     const cls = classifications.get(dep) ?? { type: "not-found" as const };
     const { label, description } = classificationLabel(cls);
@@ -740,30 +821,30 @@ function buildComment(params: {
   lines.push("");
 
   // ----- Impact summary -----
-  lines.push("### Impact Summary");
+  lines.push(t.summaryHeading);
   lines.push("");
-  lines.push("| Item | Value |");
-  lines.push("|------|-------|");
-  lines.push(`| Update type | \`${uType}\` |`);
-  lines.push(`| Files that directly import this package | ${impactedFiles.length} |`);
-  lines.push(`| Pages impacted | ${pageRoutes.length} |`);
-  lines.push(`| API routes impacted | ${apiRoutes.length} |`);
+  lines.push(t.summaryColumns);
+  lines.push(t.summarySeparator);
+  lines.push(`| ${t.updateType} | \`${uType}\` |`);
+  lines.push(`| ${t.directImportFiles} | ${impactedFiles.length} |`);
+  lines.push(`| ${t.pagesImpacted} | ${pageRoutes.length} |`);
+  lines.push(`| ${t.apiRoutesImpacted} | ${apiRoutes.length} |`);
   if (indirectImpacts.length > 0) {
-    lines.push(`| Pages impacted via other packages | ${indirectPageRoutes.length} |`);
-    lines.push(`| API routes impacted via other packages | ${indirectApiRoutes.length} |`);
+    lines.push(`| ${t.pagesViaOther} | ${indirectPageRoutes.length} |`);
+    lines.push(`| ${t.apiRoutesViaOther} | ${indirectApiRoutes.length} |`);
   }
   lines.push("");
 
   // ----- Files that directly import -----
   if (impactedFiles.length > 0) {
     lines.push("<details>");
-    lines.push("<summary>Files that directly import this package</summary>");
+    lines.push(`<summary>${t.directImportSummary}</summary>`);
     lines.push("");
     for (const file of impactedFiles.slice(0, 50)) {
       lines.push(`- \`${normalizeFilePath(file)}\``);
     }
     if (impactedFiles.length > 50) {
-      lines.push(`- ... and ${impactedFiles.length - 50} more`);
+      lines.push(`- ${t.andMore(impactedFiles.length - 50)}`);
     }
     lines.push("");
     lines.push("</details>");
@@ -772,56 +853,56 @@ function buildComment(params: {
 
   // ----- Impacted pages -----
   if (pageRoutes.length > 0) {
-    lines.push("### Impacted Pages");
+    lines.push(t.impactedPages);
     lines.push("");
     for (const route of pageRoutes.slice(0, 30)) {
       lines.push(`- \`${route}\``);
     }
     if (pageRoutes.length > 30) {
-      lines.push(`- ... and ${pageRoutes.length - 30} more`);
+      lines.push(`- ${t.andMore(pageRoutes.length - 30)}`);
     }
     lines.push("");
   }
 
   // ----- Impacted API routes -----
   if (apiRoutes.length > 0) {
-    lines.push("### Impacted API Routes");
+    lines.push(t.impactedApiRoutes);
     lines.push("");
     for (const route of apiRoutes.slice(0, 20)) {
       lines.push(`- \`${route}\``);
     }
     if (apiRoutes.length > 20) {
-      lines.push(`- ... and ${apiRoutes.length - 20} more`);
+      lines.push(`- ${t.andMore(apiRoutes.length - 20)}`);
     }
     lines.push("");
   }
 
   // ----- No source code impact -----
   if (impactedFiles.length === 0 && indirectImpacts.length === 0) {
-    lines.push("> ℹ️ **No direct source code impact detected.**");
+    lines.push(t.noImpact);
     lines.push(">");
 
     const allTransitive = deps.every((d) => classifications.get(d)?.type === "transitive");
     const allDevDeps = deps.every((d) => classifications.get(d)?.type === "devDependencies");
 
     if (allDevDeps) {
-      lines.push("> This package is only used during build/development. It does not affect runtime behavior. Quality can be verified by CI build and test passing.");
+      lines.push(t.noImpactDevDeps);
     } else if (allTransitive) {
-      lines.push("> This package is an internal dependency of other npm packages (removing it would break them). Since it is not directly imported in source code, runtime impact is limited unless the package's internal behavior has changed.");
+      lines.push(t.noImpactTransitive);
     } else {
-      lines.push("> No files directly import this package, and no reachable pages were detected via indirect dependency analysis.");
+      lines.push(t.noImpactDefault);
     }
     lines.push("");
   }
 
   // ----- Indirect impact -----
   if (indirectImpacts.length > 0) {
-    lines.push("### Impact via Other Packages");
+    lines.push(t.indirectHeading);
     lines.push("");
-    lines.push(`The following project packages internally depend on ${deps.map((v) => `\`${v}\``).join(", ")}:`);
+    lines.push(t.indirectDescription(deps.map((v) => `\`${v}\``).join(", ")));
     lines.push("");
-    lines.push("| Via Package | Importing Files | Pages | API Routes |");
-    lines.push("|---|---|---|---|");
+    lines.push(t.indirectColumns);
+    lines.push(t.indirectSeparator);
     for (const impact of indirectImpacts) {
       lines.push(`| \`${impact.pkg}\` | ${impact.files.length} | ${impact.pageRoutes.length} | ${impact.apiRoutes.length} |`);
     }
@@ -829,13 +910,13 @@ function buildComment(params: {
 
     if (indirectPageRoutes.length > 0) {
       lines.push("<details>");
-      lines.push("<summary>Impacted pages (via other packages)</summary>");
+      lines.push(`<summary>${t.indirectPagesSummary}</summary>`);
       lines.push("");
       for (const route of indirectPageRoutes.slice(0, 30)) {
         lines.push(`- \`${route}\``);
       }
       if (indirectPageRoutes.length > 30) {
-        lines.push(`- ... and ${indirectPageRoutes.length - 30} more`);
+        lines.push(`- ${t.andMore(indirectPageRoutes.length - 30)}`);
       }
       lines.push("");
       lines.push("</details>");
@@ -844,13 +925,13 @@ function buildComment(params: {
 
     if (indirectApiRoutes.length > 0) {
       lines.push("<details>");
-      lines.push("<summary>Impacted API routes (via other packages)</summary>");
+      lines.push(`<summary>${t.indirectApiRoutesSummary}</summary>`);
       lines.push("");
       for (const route of indirectApiRoutes.slice(0, 20)) {
         lines.push(`- \`${route}\``);
       }
       if (indirectApiRoutes.length > 20) {
-        lines.push(`- ... and ${indirectApiRoutes.length - 20} more`);
+        lines.push(`- ${t.andMore(indirectApiRoutes.length - 20)}`);
       }
       lines.push("");
       lines.push("</details>");
@@ -859,7 +940,7 @@ function buildComment(params: {
   }
 
   lines.push("---");
-  lines.push("> ⚠️ This is a static analysis estimate. Dynamic segments and runtime conditional logic are not considered.");
+  lines.push(t.disclaimer);
 
   return lines.join("\n");
 }
