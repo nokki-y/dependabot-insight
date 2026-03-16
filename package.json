@@ -5,7 +5,6 @@
   "description": "Analyze the impact scope of Dependabot PRs with static analysis and generate AI-powered QA reports",
   "type": "module",
   "scripts": {
-    "prepare": "git config core.hooksPath .githooks",
     "build": "tsc --noEmit",
     "lint": "eslint src/",
     "typecheck": "tsc --noEmit"

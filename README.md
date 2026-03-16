@@ -227,10 +227,15 @@ If this is a concern, you can omit the `anthropic-api-key` input to disable the 
 ```bash
 git clone https://github.com/nokki-y/dependabot-insight.git
 cd dependabot-insight
-npm install    # automatically sets up pre-commit hook via "prepare" script
+npm install
 ```
 
-`npm install` automatically configures a pre-commit hook (`.githooks/pre-commit`) that blocks commits containing potential secrets (API keys, tokens, etc.).
+### Secret scanning
+
+This repository uses [gitleaks](https://github.com/gitleaks/gitleaks) to prevent accidental secret commits:
+
+- **CI**: Runs automatically on every push and pull request (`.github/workflows/gitleaks.yml`)
+- **Local**: Install [pre-commit](https://pre-commit.com/) and run `pre-commit install` to enable the local hook
 
 ### Running locally
 

@@ -228,10 +228,15 @@ Dependabot PR 作成
 ```bash
 git clone https://github.com/nokki-y/dependabot-insight.git
 cd dependabot-insight
-npm install    # prepare スクリプトで pre-commit hook が自動設定されます
+npm install
 ```
 
-`npm install` により、シークレット（APIキー、トークン等）を含むコミットをブロックする pre-commit hook（`.githooks/pre-commit`）が自動設定されます。
+### シークレットスキャン
+
+このリポジトリでは [gitleaks](https://github.com/gitleaks/gitleaks) を使用してシークレットの誤コミットを防止しています:
+
+- **CI**: push・PR 時に自動実行（`.github/workflows/gitleaks.yml`）
+- **ローカル**: [pre-commit](https://pre-commit.com/) をインストールし `pre-commit install` でローカルフックを有効化
 
 ### ローカル実行
 
