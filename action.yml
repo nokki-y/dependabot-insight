@@ -28,6 +28,16 @@ inputs:
 runs:
   using: 'composite'
   steps:
+    - name: Mask secrets in logs
+      shell: bash
+      run: |
+        if [ -n "${{ inputs.github-token }}" ]; then
+          echo "::add-mask::${{ inputs.github-token }}"
+        fi
+        if [ -n "${{ inputs.anthropic-api-key }}" ]; then
+          echo "::add-mask::${{ inputs.anthropic-api-key }}"
+        fi
+
     - name: Resolve PR info
       id: pr
       shell: bash

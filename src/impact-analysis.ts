@@ -68,6 +68,32 @@ const EXCLUDED_PATHS = [
   path.join(SRC_DIR, "styles"),
 ];
 
+// ---------------------------------------------------------------------------
+// Security: sanitize secrets from error messages
+// ---------------------------------------------------------------------------
+
+/** Remove tokens/keys from error messages to prevent leakage in logs */
+function sanitizeError(message: string): string {
+  let sanitized = message;
+  // Mask Authorization header values
+  sanitized = sanitized.replace(/Bearer\s+[A-Za-z0-9_\-./+=]+/gi, "Bearer ***");
+  // Mask common API key patterns
+  sanitized = sanitized.replace(/(?:sk-|ghp_|gho_|ghs_|ghr_)[A-Za-z0-9_\-]+/g, "***");
+  // Mask env var values if they appear in error messages
+  const secrets = [process.env.GITHUB_TOKEN, process.env.ANTHROPIC_API_KEY].filter(Boolean);
+  for (const secret of secrets) {
+    if (secret && secret.length > 8) {
+      sanitized = sanitized.replaceAll(secret, "***");
+    }
+  }
+  return sanitized;
+}
+
+// Mask secrets at startup so GitHub Actions redacts them from all log output
+if (process.env.GITHUB_TOKEN) {
+  console.log(`::add-mask::${process.env.GITHUB_TOKEN}`);
+}
+
 const dependencyNames = (process.env.DEPENDENCY_NAMES ?? "")
   .split(",")
   .map((v) => v.trim())
@@ -619,7 +645,7 @@ async function githubApi<T>(url: string, init?: RequestInit): Promise<T> {
 
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(`GitHub API error ${res.status}: ${text}`);
+    throw new Error(sanitizeError(`GitHub API error ${res.status}: ${text}`));
   }
 
   return res.json() as Promise<T>;
@@ -982,6 +1008,7 @@ async function main() {
 }
 
 main().catch((error) => {
-  console.error(error);
+  const message = error instanceof Error ? error.message : String(error);
+  console.error(sanitizeError(message));
   process.exit(1);
 });

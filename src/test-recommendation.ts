@@ -20,6 +20,31 @@ const aiLanguage = process.env.AI_LANGUAGE || "en";
 const baseUrl = process.env.BASE_URL || "";
 
 // ---------------------------------------------------------------------------
+// Security: sanitize secrets from error messages
+// ---------------------------------------------------------------------------
+
+function sanitizeError(message: string): string {
+  let sanitized = message;
+  sanitized = sanitized.replace(/Bearer\s+[A-Za-z0-9_\-./+=]+/gi, "Bearer ***");
+  sanitized = sanitized.replace(/(?:sk-|ghp_|gho_|ghs_|ghr_|sk-ant-)[A-Za-z0-9_\-]+/g, "***");
+  const secrets = [githubToken, anthropicApiKey].filter(Boolean);
+  for (const secret of secrets) {
+    if (secret.length > 8) {
+      sanitized = sanitized.replaceAll(secret, "***");
+    }
+  }
+  return sanitized;
+}
+
+// Mask secrets at startup so GitHub Actions redacts them from all log output
+if (anthropicApiKey) {
+  console.log(`::add-mask::${anthropicApiKey}`);
+}
+if (githubToken) {
+  console.log(`::add-mask::${githubToken}`);
+}
+
+// ---------------------------------------------------------------------------
 // Language configuration
 // ---------------------------------------------------------------------------
 const LANGUAGE_INSTRUCTIONS: Record<string, string> = {
@@ -140,7 +165,7 @@ async function callClaude(userMessage: string): Promise<string> {
 
   if (!response.ok) {
     const text = await response.text();
-    throw new Error(`Anthropic API error ${response.status}: ${text}`);
+    throw new Error(sanitizeError(`Anthropic API error ${response.status}: ${text}`));
   }
 
   const result = (await response.json()) as {
@@ -286,6 +311,12 @@ To verify the impact scope from Section 3:
 
 (1–3 bullet points of assumptions this QA plan relies on)`;
 
+  // Log what will be sent to Claude API for transparency
+  console.log("  Data sent to Claude API:");
+  console.log("  - Impact analysis summary (package names, route paths, file counts)");
+  console.log("  - NO source code content is sent");
+  console.log("  - NO tokens or credentials are sent");
+  console.log("");
   console.log("  Calling Claude API...");
   const recommendation = await callClaude(userPrompt);
   console.log("  QA report generated.");
@@ -313,6 +344,7 @@ To verify the impact scope from Section 3:
 }
 
 main().catch((error) => {
-  console.error(error);
+  const message = error instanceof Error ? error.message : String(error);
+  console.error(sanitizeError(message));
   process.exit(1);
 });
