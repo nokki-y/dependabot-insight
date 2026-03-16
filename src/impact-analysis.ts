@@ -393,9 +393,9 @@ function findIndirectDependents(targetPkgs: string[]): string[] {
   const lockfilePath = path.join(ROOT, "package-lock.json");
   if (!fs.existsSync(lockfilePath)) return [];
 
-  const lockfile = JSON.parse(fs.readFileSync(lockfilePath, "utf8"));
-  const packages: Record<string, Record<string, unknown>> = lockfile.packages ?? {};
-
+  const lockfileRaw = JSON.parse(fs.readFileSync(lockfilePath, "utf8"));
+  const packages: Record<string, Record<string, unknown>> = lockfileRaw.packages ?? {};
+  // lockfileRaw の他のプロパティ（metadata等）への参照を解放
   const rootPkg = packages[""] ?? {};
   const rootDeps = new Set([
     ...Object.keys((rootPkg.dependencies ?? {}) as Record<string, string>),
@@ -410,13 +410,14 @@ function findIndirectDependents(targetPkgs: string[]): string[] {
     const name = extractPackageName(pkgPath);
     if (!name) continue;
 
-    const deps: Record<string, string> = {
-      ...((pkgInfo.dependencies ?? {}) as Record<string, string>),
-      ...((pkgInfo.peerDependencies ?? {}) as Record<string, string>),
-      ...((pkgInfo.optionalDependencies ?? {}) as Record<string, string>),
-    };
+    // 依存名のみ抽出し、pkgInfo の他のプロパティ（version, resolved等）は参照しない
+    const depKeys = [
+      ...Object.keys((pkgInfo.dependencies ?? {}) as Record<string, string>),
+      ...Object.keys((pkgInfo.peerDependencies ?? {}) as Record<string, string>),
+      ...Object.keys((pkgInfo.optionalDependencies ?? {}) as Record<string, string>),
+    ];
 
-    for (const depName of Object.keys(deps)) {
+    for (const depName of depKeys) {
       if (!reverseDepGraph.has(depName)) reverseDepGraph.set(depName, new Set());
       reverseDepGraph.get(depName)!.add(name);
     }
@@ -595,12 +596,12 @@ function bfsReachablePages(
 // Route conversion
 // ---------------------------------------------------------------------------
 
-function appPageFileToRoute(pageFile: string): string {
-  const rel = normalizeFilePath(pageFile);
+function filePathToRoute(filePath: string, filePattern: RegExp): string {
+  const rel = normalizeFilePath(filePath);
   const noPrefix = rel.replace(/^src\/app/, "");
-  const noPage = noPrefix.replace(/\/page\.(tsx|ts|jsx|js)$/, "");
+  const noFile = noPrefix.replace(filePattern, "");
 
-  const route = noPage
+  const route = noFile
     .split("/")
     .filter(Boolean)
     .filter((seg) => !/^\(.*\)$/.test(seg))
@@ -615,24 +616,12 @@ function appPageFileToRoute(pageFile: string): string {
   return `/${route}`.replace(/\/+/g, "/");
 }
 
+function appPageFileToRoute(pageFile: string): string {
+  return filePathToRoute(pageFile, /\/page\.(tsx|ts|jsx|js)$/);
+}
+
 function routeHandlerToRoute(routeFile: string): string {
-  const rel = normalizeFilePath(routeFile);
-  const noPrefix = rel.replace(/^src\/app/, "");
-  const noRoute = noPrefix.replace(/\/route\.(ts|js)$/, "");
-
-  const route = noRoute
-    .split("/")
-    .filter(Boolean)
-    .filter((seg) => !/^\(.*\)$/.test(seg))
-    .map((seg) => {
-      if (/^\[\.\.\..+\]$/.test(seg)) return "*";
-      if (/^\[\[\.{3}.+\]\]$/.test(seg)) return "*";
-      if (/^\[.+\]$/.test(seg)) return `:${seg.slice(1, -1)}`;
-      return seg;
-    })
-    .join("/");
-
-  return `/${route}`.replace(/\/+/g, "/");
+  return filePathToRoute(routeFile, /\/route\.(ts|js)$/);
 }
 
 // ---------------------------------------------------------------------------
