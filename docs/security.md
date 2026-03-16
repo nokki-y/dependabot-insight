@@ -22,8 +22,9 @@ This document describes the security architecture of dependabot-insight — what
 │  - src/**/*.ts(x)     ... collect import/export          │
 │                          declarations only               │
 │                          (full file read for AST parsing  │
-│                           but NOT sent to GitHub API      │
-│                           or Claude API)                  │
+│                           but source code body is NOT     │
+│                           included in PR comments or      │
+│                           sent to Claude API)             │
 └─────────────────────────┬────────────────────────────────┘
                           │
                           │ Static analysis (runs in GitHub Actions runner)
@@ -38,18 +39,19 @@ This document describes the security architecture of dependabot-insight — what
              │  - file counts           │
              │                          │
              │  * Source code body is    │
-             │    NOT sent to GitHub API │
-             │    or Claude API          │
+             │    NOT included in PR     │
+             │    comments or sent to    │
+             │    Claude API             │
              └────────────┬─────────────┘
                           │
                ┌──────────┼──────────┐
                ▼                     ▼
      ┌────────────────────────┐  ┌──────────────────────────────┐
-     │  GitHub API            │  │  Claude API                  │
+     │  GitHub PR Comment     │  │  Claude API                  │
      │                        │  │  (only when                   │
-     │  Sends:                │  │   anthropic-api-key           │
+     │  Posts:                │  │   anthropic-api-key           │
      │  Static analysis       │  │   is provided)                │
-     │  results posted as     │  │                               │
+     │  results as            │  │                               │
      │  PR comment            │  │  Sends:                       │
      │  (impact summary)      │  │  - impact summary             │
      │                        │  │    (same as PR comment)       │
