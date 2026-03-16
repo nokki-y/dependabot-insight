@@ -16,7 +16,7 @@ flowchart TD
         F1["package.json"]
         F2["package-lock.json"]
         F3["tsconfig.json"]
-        F4["src/**/*.ts(x)"]
+        F4["**/*.ts(x) (repository root)"]
     end
 
     TARGET -->|静的解析| IA["影響解析"]
@@ -35,7 +35,7 @@ flowchart TD
 | `package.json` | 依存区分の判定（dependencies / devDependencies） |
 | `package-lock.json` | 推移的依存関係の追跡 |
 | `tsconfig.json` | パスエイリアスの解決 |
-| `src/**/*.ts(x)` | import/export 宣言の収集（AST解析のため全文を読み取るが、PRコメントにも Claude API にもソースコード本文は含めない） |
+| `**/*.ts(x)`（リポジトリルートから） | import/export 宣言の収集（AST解析のため全文を読み取るが、PRコメントにも Claude API にもソースコード本文は含めない） |
 
 | 送信先 | 送信する情報 | 返却される情報 |
 |--------|------------|--------------|

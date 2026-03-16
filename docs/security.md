@@ -16,7 +16,7 @@ flowchart TD
         F1["package.json"]
         F2["package-lock.json"]
         F3["tsconfig.json"]
-        F4["src/**/*.ts(x)"]
+        F4["**/*.ts(x) (repository root)"]
     end
 
     TARGET -->|Static analysis| IA["Impact Analysis"]
@@ -35,7 +35,7 @@ flowchart TD
 | `package.json` | Classify dependency (dependencies / devDependencies) |
 | `package-lock.json` | Trace transitive dependencies |
 | `tsconfig.json` | Resolve path aliases |
-| `src/**/*.ts(x)` | Collect import/export declarations (full file read for AST parsing, but source code body is NOT included in PR comments or sent to Claude API) |
+| `**/*.ts(x)` (from repository root) | Collect import/export declarations (full file read for AST parsing, but source code body is NOT included in PR comments or sent to Claude API) |
 
 | Destination | Data sent | Data returned |
 |-------------|-----------|---------------|

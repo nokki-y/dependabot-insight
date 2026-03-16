@@ -114,7 +114,7 @@ flowchart TD
 |---------|------|
 | 1. 依存パッケージの分類 | `package.json` を読み取り → dependencies / devDependencies。どちらでもない → `package-lock.json` を解析 → transitive（どのパッケージ経由か） |
 | 2. パスエイリアスの読み込み | `tsconfig.json` → `compilerOptions.paths` を抽出 |
-| 3. ソースファイルの走査 | `src/**/*.ts(x)` を再帰スキャン（テストファイル、`node_modules` 等は除外） |
+| 3. ソースファイルの走査 | `**/*.ts(x)` (repository root) を再帰スキャン（テストファイル、`node_modules` 等は除外） |
 | 4. importの解析 | TypeScript AST → 各ファイルの import/require/export-from 宣言を抽出 |
 | 5. importグラフの構築 | 順方向グラフ（ファイル → importしているファイル群）+ 逆方向グラフ（ファイル → importされているファイル群） |
 | 6. 直接影響ファイルの特定 | 外部 import が更新対象パッケージ名に一致するファイル |
@@ -224,7 +224,7 @@ sequenceDiagram
 | コンポーネント | 読み取り | 書き込み |
 |--------------|---------|---------|
 | **action.yml** | GitHub イベントコンテキスト | 環境変数: `DEPENDENCY_NAMES`, `UPDATE_TYPE`, `REPOSITORY`, `PR_NUMBER`, `GITHUB_TOKEN` |
-| **impact-analysis.ts** | 対象リポジトリ: `package.json`, `package-lock.json`, `tsconfig.json`, `src/**/*.ts(x)` | PRコメント（マーカー: `dependabot-impact-review`）+ `/tmp/dependabot-impact-analysis.md` |
+| **impact-analysis.ts** | 対象リポジトリ: `package.json`, `package-lock.json`, `tsconfig.json`, `**/*.ts(x)` (repository root) | PRコメント（マーカー: `dependabot-impact-review`）+ `/tmp/dependabot-impact-analysis.md` |
 | **test-recommendation.ts** | `/tmp/dependabot-impact-analysis.md` + 環境変数: `ANTHROPIC_API_KEY`, `AI_MODEL`, `AI_LANGUAGE`, `BASE_URL` | Claude API（`POST /v1/messages`）→ PRコメント（マーカー: `dependabot-test-recommendation`） |
 
 ### インターフェース契約

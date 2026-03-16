@@ -114,7 +114,7 @@ flowchart TD
 |------|-------------|
 | 1. Classify dependency | Read `package.json` → dependencies / devDependencies. If neither → parse `package-lock.json` → transitive (via which packages?) |
 | 2. Load path aliases | Read `tsconfig.json` → extract `compilerOptions.paths` |
-| 3. Walk source files | Recursively scan `src/**/*.ts(x)`, excluding test files, `node_modules`, etc. |
+| 3. Walk source files | Recursively scan `**/*.ts(x)` (repository root), excluding test files, `node_modules`, etc. |
 | 4. Parse imports | TypeScript AST → extract import/require/export-from declarations per file |
 | 5. Build import graph | Forward graph (file → imported files) + reverse graph (file → files that import it) |
 | 6. Find impacted files | Files whose external imports match the updated dependency name |
@@ -223,7 +223,7 @@ The sequence diagram in [Section 1](#1-pipeline-overview) shows the complete dat
 | Component | Reads | Writes |
 |-----------|-------|--------|
 | **action.yml** | GitHub event context | Environment variables: `DEPENDENCY_NAMES`, `UPDATE_TYPE`, `REPOSITORY`, `PR_NUMBER`, `GITHUB_TOKEN` |
-| **impact-analysis.ts** | Target repo: `package.json`, `package-lock.json`, `tsconfig.json`, `src/**/*.ts(x)` | PR comment (marker: `dependabot-impact-review`) + `/tmp/dependabot-impact-analysis.md` |
+| **impact-analysis.ts** | Target repo: `package.json`, `package-lock.json`, `tsconfig.json`, `**/*.ts(x)` (repository root) | PR comment (marker: `dependabot-impact-review`) + `/tmp/dependabot-impact-analysis.md` |
 | **test-recommendation.ts** | `/tmp/dependabot-impact-analysis.md` + env vars: `ANTHROPIC_API_KEY`, `AI_MODEL`, `AI_LANGUAGE`, `BASE_URL` | Claude API (`POST /v1/messages`) → PR comment (marker: `dependabot-test-recommendation`) |
 
 ### Interface contract
