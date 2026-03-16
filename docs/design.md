@@ -133,7 +133,7 @@ flowchart TD
 | `findIndirectDependents` | BFS on package-lock.json's dependency tree to find root packages that transitively depend on the target |
 | `bfsReachablePages` | Per-file BFS on the reverse import graph to find reachable `page.tsx` and `route.ts` |
 | `buildComment` | Generate the Markdown PR comment from analysis results |
-| `upsertComment` | Post or update the PR comment using an HTML marker for idempotency |
+| `upsertComment` | Post or update the PR comment using an HTML marker for idempotency. Fetches up to 100 comments per PR (no pagination). This is sufficient for Dependabot PRs which typically have fewer than 10 comments |
 
 ### Design decisions
 

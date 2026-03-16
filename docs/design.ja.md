@@ -133,7 +133,7 @@ flowchart TD
 | `findIndirectDependents` | package-lock.json の依存ツリーを BFS で逆引きし、更新対象パッケージに推移的依存するルートパッケージを発見 |
 | `bfsReachablePages` | 逆方向 import グラフ上でファイルごとに BFS を実行し、到達可能な `page.tsx` と `route.ts` を発見 |
 | `buildComment` | 解析結果から Markdown 形式の PR コメントを生成 |
-| `upsertComment` | HTML マーカーによるべき等な PR コメントの投稿/更新 |
+| `upsertComment` | HTML マーカーによるべき等な PR コメントの投稿/更新。PR あたり最大100件のコメントを取得（ページネーション未対応）。Dependabot PR は通常10件未満のコメントであるため十分 |
 
 ### 設計判断
 
