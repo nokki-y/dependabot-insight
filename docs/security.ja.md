@@ -180,7 +180,18 @@ dependabot-insight リポジトリにコントリビュートする開発者が�
 
 **Q. fork PR を経由した secrets 窃取攻撃は防げるか？**
 
-GitHub Actions の仕組みとこの Action の実装の2層で保護されています。
+この Action は以下の2つのイベントで実行されます:
 
-- **`pull_request` イベント**: fork PR には secrets が渡されません（GitHub Actions の仕様）。fork PR から `GITHUB_TOKEN` や `ANTHROPIC_API_KEY` にアクセスすることはできません
-- **`issue_comment` イベント**: secrets が渡るため、この Action は PR 作成者が `dependabot[bot]` であることを GitHub API 経由で検証し、それ以外の PR では実行を拒否します。`dependabot[bot]` は GitHub が内部管理する bot アカウントであり、一般ユーザーが `[bot]` サフィックス付きのアカウントを作成することはできません。GitHub API の `author.login` は GitHub が認証した値を返すため、なりすましは不可能です。加えて、トリガーコマンド（`/dep-insight`）の実行権限を `MEMBER` / `OWNER` / `COLLABORATOR` に限定することを、利用者のワークフロー側で設定可能です（README の設定例を参照）
+- **Dependabot が PR を作成・更新した時**（GitHub Actions の `pull_request` イベント）— 自動実行
+- **誰かが PR に `/dep-insight` とコメントした時**（GitHub Actions の `issue_comment` イベント）— 手動再実行
+
+それぞれに対して、GitHub Actions の仕組みとこの Action の実装の2層で保護されています。
+
+**Dependabot が PR を作成・更新した時（`pull_request` イベント）:**
+- fork PR には secrets が渡されません（GitHub Actions の仕様）。fork PR から `GITHUB_TOKEN` や `ANTHROPIC_API_KEY` にアクセスすることはできません
+- Dependabot 以外の PR で実行されるかどうかは、利用者のワークフロー側の `if` 条件で制御します（README の設定例では `dependabot[bot]` のみに限定）
+
+**誰かが PR にコメントした時（`issue_comment` イベント）:**
+- このイベントでは secrets が渡るため、この Action は PR 作成者が `dependabot[bot]` であることを GitHub API 経由で検証し、**Dependabot 以外が作成した PR では実行を拒否します**
+- `dependabot[bot]` は GitHub が内部管理する bot アカウントであり、一般ユーザーが `[bot]` サフィックス付きのアカウントを作成することはできません。GitHub API の `author.login` は GitHub が認証した値を返すため、なりすましは不可能です
+- 加えて、`/dep-insight` コマンドの実行権限を `MEMBER` / `OWNER` / `COLLABORATOR` に限定することを、利用者のワークフロー側で設定可能です（README の設定例を参照）

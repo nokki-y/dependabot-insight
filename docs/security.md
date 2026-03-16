@@ -182,7 +182,18 @@ This is not currently supported. As an alternative, set `DRY_RUN=true` and run l
 
 **Q. Are fork PR attacks (secret exfiltration) prevented?**
 
-Yes, through two layers of protection:
+This Action runs on two types of events:
 
-- **`pull_request` event**: Secrets are not available to fork PRs (GitHub Actions behavior by design). Fork PRs cannot access `GITHUB_TOKEN` or `ANTHROPIC_API_KEY`.
-- **`issue_comment` event**: Secrets are available, so this Action verifies the PR author is `dependabot[bot]` via the GitHub API and refuses to run on PRs from other authors. `dependabot[bot]` is an internally managed GitHub bot account — regular users cannot create accounts with the `[bot]` suffix, and the `author.login` value returned by the GitHub API is authenticated by GitHub, making impersonation impossible. Additionally, the trigger command (`/dep-insight`) can be restricted to `MEMBER` / `OWNER` / `COLLABORATOR` via `author_association` checks in the user's workflow (see the setup example in README).
+- **When Dependabot creates or updates a PR** (GitHub Actions `pull_request` event) — automatic execution
+- **When someone comments `/dep-insight` on a PR** (GitHub Actions `issue_comment` event) — manual re-execution
+
+Each is protected by GitHub Actions' built-in behavior and this Action's implementation:
+
+**When Dependabot creates or updates a PR (`pull_request` event):**
+- Secrets are not available to fork PRs (GitHub Actions behavior by design). Fork PRs cannot access `GITHUB_TOKEN` or `ANTHROPIC_API_KEY`.
+- Whether the Action runs on non-Dependabot PRs is controlled by the `if` condition in the user's workflow (the README setup example restricts it to `dependabot[bot]` only).
+
+**When someone comments on a PR (`issue_comment` event):**
+- Secrets are available in this event, so this Action verifies the PR author is `dependabot[bot]` via the GitHub API and **refuses to run on PRs created by anyone else**.
+- `dependabot[bot]` is an internally managed GitHub bot account — regular users cannot create accounts with the `[bot]` suffix, and the `author.login` value returned by the GitHub API is authenticated by GitHub, making impersonation impossible.
+- Additionally, the `/dep-insight` command can be restricted to `MEMBER` / `OWNER` / `COLLABORATOR` via `author_association` checks in the user's workflow (see the setup example in README).
