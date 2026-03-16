@@ -170,20 +170,19 @@ When the target repository is private, be aware that the following information b
 
 The same information listed above is sent to Anthropic's API. Per [Anthropic's API terms](https://www.anthropic.com/api-terms), API inputs are not used for model training. However, if your organization's security policy prohibits sending internal metadata to third-party APIs, omit the `anthropic-api-key` input. The static impact analysis will still be posted as a PR comment without calling the Claude API.
 
-### Mitigation options
+### FAQ
 
-| Concern | Mitigation |
-|---------|------------|
-| Don't want any data sent to Claude API | Omit `anthropic-api-key` — only static analysis (within GitHub) is used |
-| Don't want file paths in PR comments | Not currently supported. Consider running with `DRY_RUN=true` locally instead |
+**Q. What if I don't want any data sent to Claude API?**
 
-### Protection against fork PR attacks
+Omit the `anthropic-api-key` input. The Claude API will not be called, and only the static impact analysis (which stays within GitHub) will be posted as a PR comment.
 
-Fork PRs attempting to exfiltrate secrets are protected by two layers: GitHub Actions' built-in behavior and this Action's implementation.
+**Q. What if I don't want file paths shown in PR comments?**
 
-**GitHub Actions built-in protection:**
-- `pull_request` event: Secrets are not available to fork PRs (GitHub Actions behavior by design). Fork PRs cannot access `GITHUB_TOKEN` or `ANTHROPIC_API_KEY`.
+This is not currently supported. As an alternative, set `DRY_RUN=true` and run locally to review the results without posting them.
 
-**This Action's implementation:**
-- `issue_comment` event: Secrets are available, so the Action verifies the PR author is `dependabot[bot]` and refuses to run on PRs from other authors.
-- The trigger command (`/dep-insight`) can be restricted to `MEMBER` / `OWNER` / `COLLABORATOR` via `author_association` checks in the user's workflow (see the setup example in README).
+**Q. Are fork PR attacks (secret exfiltration) prevented?**
+
+Yes, through two layers of protection:
+
+- **`pull_request` event**: Secrets are not available to fork PRs (GitHub Actions behavior by design). Fork PRs cannot access `GITHUB_TOKEN` or `ANTHROPIC_API_KEY`.
+- **`issue_comment` event**: Secrets are available, so this Action verifies the PR author is `dependabot[bot]` and refuses to run on PRs from other authors. Additionally, the trigger command (`/dep-insight`) can be restricted to `MEMBER` / `OWNER` / `COLLABORATOR` via `author_association` checks in the user's workflow (see the setup example in README).

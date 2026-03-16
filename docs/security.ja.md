@@ -168,20 +168,19 @@ dependabot-insight リポジトリにコントリビュートする開発者が�
 
 上記と同じ情報が Anthropic の API に送信されます。[Anthropic の API 利用規約](https://www.anthropic.com/api-terms) によると、API 入力はモデルの学習には使用されません。ただし、組織のセキュリティポリシーが内部メタデータの Anthropic API への送信を禁止している場合は、`anthropic-api-key` を省略してください。Claude API を呼び出すことなく、静的影響解析のみが PR コメントとして投稿されます。
 
-### 緩和策
+### FAQ
 
-| 懸念事項 | 緩和策 |
-|---------|--------|
-| Claude API にデータを送信したくない | `anthropic-api-key` を省略 — GitHub 内で完結する静的解析のみ使用 |
-| PRコメントにファイルパスを表示したくない | 現時点では未対応。代わりに `DRY_RUN=true` でローカル実行を検討 |
+**Q. Claude API にデータを送信したくない場合は？**
 
-### fork PR からの攻撃に対する保護
+`anthropic-api-key` を省略してください。Claude API を呼び出さず、GitHub 内で完結する静的影響解析のみが PR コメントとして投稿されます。
 
-fork PR を経由して secrets を窃取する攻撃に対しては、GitHub Actions の仕組みとこの Action の実装の2層で保護されています。
+**Q. PRコメントにファイルパスを表示したくない場合は？**
 
-**GitHub Actions の仕組みによる保護:**
-- `pull_request` イベント: fork PR には secrets が渡されない（GitHub Actions の仕様）。そのため、fork PR から `GITHUB_TOKEN` や `ANTHROPIC_API_KEY` にアクセスすることはできない
+現時点では未対応です。代わりに `DRY_RUN=true` を設定してローカルで実行し、結果を手元で確認する方法を検討してください。
 
-**この Action の実装による保護:**
-- `issue_comment` イベント: secrets が渡るため、PR 作成者が `dependabot[bot]` であることを検証し、それ以外の PR では実行を拒否する
-- `issue_comment` のトリガーコマンド（`/dep-insight`）の実行権限を `MEMBER` / `OWNER` / `COLLABORATOR` に限定することを、利用者のワークフロー側で設定可能（READMEの設定例を参照）
+**Q. fork PR を経由した secrets 窃取攻撃は防げるか？**
+
+GitHub Actions の仕組みとこの Action の実装の2層で保護されています。
+
+- **`pull_request` イベント**: fork PR には secrets が渡されません（GitHub Actions の仕様）。fork PR から `GITHUB_TOKEN` や `ANTHROPIC_API_KEY` にアクセスすることはできません
+- **`issue_comment` イベント**: secrets が渡るため、この Action は PR 作成者が `dependabot[bot]` であることを検証し、それ以外の PR では実行を拒否します。加えて、トリガーコマンド（`/dep-insight`）の実行権限を `MEMBER` / `OWNER` / `COLLABORATOR` に限定することを、利用者のワークフロー側で設定可能です（README の設定例を参照）
