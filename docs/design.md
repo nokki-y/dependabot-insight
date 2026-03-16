@@ -195,13 +195,6 @@ The prompt is structured around **what the reviewer needs**, not what the AI fin
 4. **QA plan** — Each test case must trace back to the impact scope. Include concrete steps (GUI URLs or CLI commands).
 5. **Assumptions** — What this report relies on.
 
-**Why was Risk Assessment removed?**
-
-The original design included a 5-axis risk scoring rubric (dependency type, library category, page count, update type, feature criticality). This was removed because:
-- The reviewer can assess risk from the impact scope and QA plan directly
-- Numeric scores created false precision (e.g., "11/15 = High") that didn't add actionable information
-- The scoring consumed prompt tokens that are better spent on concrete test steps
-
 **Why require verification commands?**
 
 The prompt explicitly instructs Claude to include commands like `npm ls <package>` or `grep -r "<package>" src/`. This is because:
