@@ -74,8 +74,7 @@ composite action の唯一のデメリットは `npm ci` の起動オーバー�
 
 **開発中のテスト方法は？**
 
-- **ローカル**: 対象リポジトリのディレクトリで `DRY_RUN=true` を設定してスクリプトを直接実行
-- **統合テスト**: 別リポジトリのワークフローから開発ブランチを参照（例: `uses: nokki-y/dependabot-insight@feature/branch-name`）
+[docs/testing.ja.md](./testing.ja.md) を参照（ローカル DRY_RUN 実行とブランチ指定による統合テストの手順を記載）。
 
 ## 3. impact-analysis.ts（静的解析）
 

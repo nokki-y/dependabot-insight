@@ -74,8 +74,7 @@ The composite action approach was chosen because it eliminates build artifact ma
 
 **How to test during development?**
 
-- **Local**: Run scripts directly with `DRY_RUN=true` in the target repository directory
-- **Integration**: Reference the development branch from another repository's workflow (e.g., `uses: nokki-y/dependabot-insight@feature/branch-name`)
+See [docs/testing.md](./testing.md) for detailed instructions (local DRY_RUN execution and integration testing via branch reference).
 
 ## 3. impact-analysis.ts (Static Analysis)
 

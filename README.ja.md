@@ -233,38 +233,9 @@ cd dependabot-insight
 npm install
 ```
 
-### シークレットスキャン
+### テストとローカル開発
 
-このリポジトリでは [gitleaks](https://github.com/gitleaks/gitleaks) を使用してシークレットの誤コミットを防止しています:
-
-- **CI**: push・PR 時に自動実行（`.github/workflows/gitleaks.yml`）
-- **ローカル**: [pre-commit](https://pre-commit.com/) をインストールし `pre-commit install` でローカルフックを有効化
-
-### ローカル実行
-
-環境変数テンプレートをコピーして値を設定してください:
-
-```bash
-cp .env.example .env
-# .env に認証情報を記入（このファイルは絶対にコミットしないこと）
-```
-
-```bash
-# 環境変数を設定
-export GITHUB_TOKEN="..."
-export ANTHROPIC_API_KEY="..."
-export REPOSITORY="owner/repo"
-export PR_NUMBER="123"
-export DEPENDENCY_NAMES="package-name"
-export UPDATE_TYPE="patch"
-export DRY_RUN="true"
-
-# 影響解析を実行
-npx tsx src/impact-analysis.ts
-
-# AI 品質保証レポートを生成
-npx tsx src/test-recommendation.ts
-```
+スクリプトのローカル実行および統合テストの方法は [docs/testing.ja.md](./docs/testing.ja.md) を参照してください。
 
 ## ライセンス
 

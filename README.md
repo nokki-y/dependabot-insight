@@ -232,38 +232,9 @@ cd dependabot-insight
 npm install
 ```
 
-### Secret scanning
+### Testing and local development
 
-This repository uses [gitleaks](https://github.com/gitleaks/gitleaks) to prevent accidental secret commits:
-
-- **CI**: Runs automatically on every push and pull request (`.github/workflows/gitleaks.yml`)
-- **Local**: Install [pre-commit](https://pre-commit.com/) and run `pre-commit install` to enable the local hook
-
-### Running locally
-
-Copy the environment template and fill in your values:
-
-```bash
-cp .env.example .env
-# Edit .env with your credentials (never commit this file)
-```
-
-```bash
-# Set environment variables
-export GITHUB_TOKEN="..."
-export ANTHROPIC_API_KEY="..."
-export REPOSITORY="owner/repo"
-export PR_NUMBER="123"
-export DEPENDENCY_NAMES="package-name"
-export UPDATE_TYPE="patch"
-export DRY_RUN="true"
-
-# Run impact analysis
-npx tsx src/impact-analysis.ts
-
-# Run AI QA report
-npx tsx src/test-recommendation.ts
-```
+See [docs/testing.md](./docs/testing.md) for how to run scripts locally and perform integration testing.
 
 ## License
 
