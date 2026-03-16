@@ -1,0 +1,153 @@
+name: 'Dependabot Insight'
+description: 'Analyze the impact scope of Dependabot PRs with static analysis and generate AI-powered QA reports'
+author: 'nokki-y'
+
+branding:
+  icon: 'search'
+  color: 'blue'
+
+inputs:
+  github-token:
+    description: 'GitHub token for posting PR comments'
+    required: true
+  anthropic-api-key:
+    description: 'Anthropic API key for AI QA report generation. If omitted, only the static impact analysis is posted'
+    required: false
+  ai-model:
+    description: 'Claude model to use for QA report generation'
+    required: false
+    default: 'claude-sonnet-4-6'
+  ai-language:
+    description: 'Language for impact analysis comment and AI QA report. en and ja are fully supported; others affect AI report only'
+    required: false
+    default: 'en'
+  base-url:
+    description: 'Base URL for GUI verification links in the QA report (e.g., Vercel preview URL)'
+    required: false
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Mask secrets in logs
+      shell: bash
+      run: |
+        if [ -n "${{ inputs.github-token }}" ]; then
+          echo "::add-mask::${{ inputs.github-token }}"
+        fi
+        if [ -n "${{ inputs.anthropic-api-key }}" ]; then
+          echo "::add-mask::${{ inputs.anthropic-api-key }}"
+        fi
+        if [ -n "${{ inputs.base-url }}" ]; then
+          echo "::add-mask::${{ inputs.base-url }}"
+        fi
+
+    - name: Resolve PR info
+      id: pr
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
+      run: |
+        if [ "${{ github.event_name }}" = "pull_request" ]; then
+          echo "number=${{ github.event.pull_request.number }}" >> "$GITHUB_OUTPUT"
+        elif [ "${{ github.event_name }}" = "issue_comment" ]; then
+          PR_NUMBER="${{ github.event.issue.number }}"
+          echo "number=${PR_NUMBER}" >> "$GITHUB_OUTPUT"
+
+          AUTHOR=$(gh pr view "$PR_NUMBER" --repo "${{ github.repository }}" --json author --jq '.author.login')
+          if [ "$AUTHOR" != "app/dependabot" ]; then
+            echo "::error::This PR was not created by Dependabot. Skipping."
+            exit 1
+          fi
+        fi
+
+    - name: Fetch Dependabot metadata
+      id: metadata
+      if: github.event_name == 'pull_request'
+      uses: dependabot/fetch-metadata@d7267f607e9d3fb96fc2fbe83e0af444713e90b7 # v2
+      with:
+        github-token: ${{ inputs.github-token }}
+
+    - name: Resolve dependency info from branch
+      id: branch-metadata
+      if: github.event_name == 'issue_comment'
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
+      run: |
+        PR_NUMBER="${{ steps.pr.outputs.number }}"
+        BRANCH=$(gh pr view "$PR_NUMBER" --repo "${{ github.repository }}" --json headRefName --jq '.headRefName')
+        SLUG=$(echo "$BRANCH" | sed -E 's|^dependabot/[^/]+/||')
+
+        if echo "$SLUG" | grep -qE '^multi-'; then
+          TITLE=$(gh pr view "$PR_NUMBER" --repo "${{ github.repository }}" --json title --jq '.title')
+          DEP_NAME=$(echo "$TITLE" | sed -E 's/^.*bump //' | sed -E 's/ from [0-9].*//' | sed 's/ and /,/g' | tr ',' '\n' | sed 's/^ *//;s/ *$//' | paste -sd ',' -)
+          UPDATE_TYPE="unknown"
+        else
+          DEP_NAME=$(echo "$SLUG" | sed -E 's|-[0-9]+\.[0-9]+.*$||')
+
+          TITLE=$(gh pr view "$PR_NUMBER" --repo "${{ github.repository }}" --json title --jq '.title')
+          OLD_VERSION=$(echo "$TITLE" | grep -oE 'from [0-9]+\.[0-9]+\.[0-9]+' | sed 's/from //' || true)
+          NEW_VERSION=$(echo "$SLUG" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+$' || true)
+
+          if [ -n "$OLD_VERSION" ] && [ -n "$NEW_VERSION" ]; then
+            OLD_MAJOR=$(echo "$OLD_VERSION" | cut -d. -f1)
+            NEW_MAJOR=$(echo "$NEW_VERSION" | cut -d. -f1)
+            OLD_MINOR=$(echo "$OLD_VERSION" | cut -d. -f2)
+            NEW_MINOR=$(echo "$NEW_VERSION" | cut -d. -f2)
+
+            if [ "$OLD_MAJOR" != "$NEW_MAJOR" ]; then
+              UPDATE_TYPE="version-update:semver-major"
+            elif [ "$OLD_MINOR" != "$NEW_MINOR" ]; then
+              UPDATE_TYPE="version-update:semver-minor"
+            else
+              UPDATE_TYPE="version-update:semver-patch"
+            fi
+          else
+            UPDATE_TYPE="unknown"
+          fi
+        fi
+
+        if [ -z "$DEP_NAME" ]; then
+          echo "::error::Could not extract dependency name from branch: $BRANCH"
+          exit 1
+        fi
+
+        echo "dependency-names=${DEP_NAME}" >> "$GITHUB_OUTPUT"
+        echo "update-type=${UPDATE_TYPE}" >> "$GITHUB_OUTPUT"
+
+    - name: Setup Node.js
+      uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+      with:
+        node-version: 22
+
+    - name: Install action dependencies
+      shell: bash
+      run: cd "${{ github.action_path }}" && npm ci --production
+
+    - name: Analyze impact and post comment
+      shell: bash
+      env:
+        GITHUB_TOKEN: ${{ inputs.github-token }}
+        REPOSITORY: ${{ github.repository }}
+        PR_NUMBER: ${{ steps.pr.outputs.number }}
+        DEPENDENCY_NAMES: ${{ steps.metadata.outputs.dependency-names || steps.branch-metadata.outputs.dependency-names }}
+        UPDATE_TYPE: ${{ steps.metadata.outputs.update-type || steps.branch-metadata.outputs.update-type || 'unknown' }}
+        IMPACT_OUTPUT_PATH: /tmp/dependabot-impact-analysis.md
+        AI_LANGUAGE: ${{ inputs.ai-language }}
+      run: |
+        "${{ github.action_path }}/node_modules/.bin/tsx" "${{ github.action_path }}/src/impact-analysis.ts"
+
+    - name: Generate test recommendations with AI
+      if: inputs.anthropic-api-key != ''
+      shell: bash
+      env:
+        ANTHROPIC_API_KEY: ${{ inputs.anthropic-api-key }}
+        AI_MODEL: ${{ inputs.ai-model }}
+        AI_LANGUAGE: ${{ inputs.ai-language }}
+        BASE_URL: ${{ inputs.base-url }}
+        GITHUB_TOKEN: ${{ inputs.github-token }}
+        REPOSITORY: ${{ github.repository }}
+        PR_NUMBER: ${{ steps.pr.outputs.number }}
+        IMPACT_OUTPUT_PATH: /tmp/dependabot-impact-analysis.md
+      run: |
+        "${{ github.action_path }}/node_modules/.bin/tsx" "${{ github.action_path }}/src/test-recommendation.ts"

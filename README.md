@@ -1,2 +1,221 @@
 # dependabot-insight
+
 Analyze the impact scope of Dependabot PRs with static analysis and generate AI-powered QA reports.
+
+> English | [日本語](./README.ja.md)
+
+## What it does
+
+When Dependabot creates a PR, this action automatically:
+
+1. **Classifies the dependency** — Is it a runtime dependency, dev dependency, or transitive (internal dependency of another package)?
+2. **Traces impact to pages/routes** — Uses TypeScript AST parsing to follow the import graph from the updated package to reachable Next.js pages and API routes
+3. **Analyzes indirect dependencies** — If no direct imports are found, parses `package-lock.json` to identify which project packages transitively depend on the updated package
+4. **Generates a QA report with AI** — Calls the Claude API to produce a risk-scored quality assurance plan with concrete test steps
+
+The results are posted as PR comments, giving reviewers everything they need to decide whether to merge.
+
+### Example output
+
+<details>
+<summary>Impact Analysis Comment</summary>
+
+> ## Impact Analysis
+>
+> ### Dependency Classification
+>
+> | Package | Classification | Description |
+> |---|---|---|
+> | `date-fns` | **dependencies** | Listed in package.json dependencies. Used at runtime |
+>
+> ### Impact Summary
+>
+> | Item | Value |
+> |------|-------|
+> | Update type | `minor` |
+> | Files that directly import this package | 4 |
+> | Pages impacted | 3 |
+> | API routes impacted | 0 |
+>
+> ### Impacted Pages
+>
+> - `/dashboard`
+> - `/users/:id`
+> - `/settings`
+
+</details>
+
+<details>
+<summary>AI QA Report Comment</summary>
+
+> ## QA Report
+>
+> ### 1. Package Necessity
+> `date-fns` is listed in `dependencies` (runtime). It is used for date formatting and manipulation across the application. Removing it would break date display in multiple pages.
+>
+> **Verification:**
+> ```bash
+> cat package.json | grep "date-fns"
+> grep -r "date-fns" src/ --include="*.ts" --include="*.tsx" -l
+> ```
+>
+> ### 2. Change Summary
+> `date-fns` minor update (3.6.0 → 3.7.0). date-fns is a date utility library.
+>
+> ### 3. Impact Scope
+>
+> | Scope | Range | Details |
+> |-------|-------|---------|
+> | Direct import | 4 files, 3 pages | `src/utils/format-date.ts`, `src/components/DateDisplay.tsx`, ... |
+> | Via other packages | None | None |
+>
+> ### 4. QA Plan
+>
+> | No. | Target | Type | How to Verify | Expected Result |
+> |-----|--------|------|---------------|-----------------|
+> | 1 | Dashboard | GUI check | Open `<pr-preview-url>/dashboard`, verify date columns | Dates display in correct format |
+> | 2 | User detail | GUI check | Open `<pr-preview-url>/users/1` | Created/updated timestamps display correctly |
+>
+> ### 5. Assumptions
+> - Static analysis correctly identified all files importing `date-fns`
+
+</details>
+
+## Setup
+
+### 1. Configure secrets
+
+Go to your repository **Settings > Secrets and variables > Actions** and add:
+
+| Secret | Required | Description |
+|--------|----------|-------------|
+| `ANTHROPIC_API_KEY` | No | API key from [Anthropic Console](https://console.anthropic.com/). Required for AI QA report generation. If omitted, only the static impact analysis is posted |
+
+> `GITHUB_TOKEN` is automatically provided by GitHub Actions — no manual setup needed.
+
+### 2. Create workflow file
+
+Create `.github/workflows/dependabot-insight.yml`:
+
+```yaml
+name: Dependabot Insight
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+jobs:
+  analyze:
+    if: |
+      (github.event_name == 'pull_request' && github.event.pull_request.user.login == 'dependabot[bot]') ||
+      (github.event_name == 'issue_comment' && github.event.issue.pull_request && contains(github.event.comment.body, '/dep-insight'))
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: nokki-y/dependabot-insight@v1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
+```
+
+### With all options
+
+```yaml
+      - uses: nokki-y/dependabot-insight@v1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
+          ai-model: 'claude-sonnet-4-6'          # Claude model (default: claude-sonnet-4-6)
+          ai-language: 'ja'                        # QA report language (default: en)
+          base-url: 'https://my-app-pr-123.vercel.app'  # For GUI verification URLs
+```
+
+### Trigger via comment
+
+Post `/dep-insight` as a comment on any Dependabot PR to trigger the analysis manually.
+
+### Inputs
+
+| Input | Required | Default | Description |
+|-------|----------|---------|-------------|
+| `github-token` | Yes | — | GitHub token for posting PR comments |
+| `anthropic-api-key` | No | — | Anthropic API key for AI QA report generation. If omitted, only the static impact analysis is posted |
+| `ai-model` | No | `claude-sonnet-4-6` | Claude model to use for QA report generation |
+| `ai-language` | No | `en` | Language for both the impact analysis comment and the AI QA report. `en` (English) and `ja` (Japanese) are fully supported. Other language codes (e.g., `ko`, `zh`) affect the AI QA report only (passed to Claude as-is); the impact analysis comment falls back to English |
+| `base-url` | No | — | Base URL for GUI verification links in the QA report (e.g., Vercel preview URL) |
+
+## How it works
+
+```mermaid
+flowchart TD
+    START[Dependabot PR created] --> S1[Classify dependency]
+    S1 --> S2[Parse imports via AST]
+    S2 --> S3[Build import graph]
+    S3 --> S4[BFS to pages/routes]
+    S4 --> CHECK{Pages found?}
+    CHECK -->|No| S5[Indirect dep analysis]
+    CHECK -->|Yes| S6[Post impact comment]
+    S5 --> S6
+    S6 --> S7[AI QA report]
+    S7 --> S8[Post QA comment]
+
+    style S7 stroke-dasharray: 5 5
+    style S8 stroke-dasharray: 5 5
+```
+
+| Step | Description |
+|------|-------------|
+| Classify dependency | Read `package.json` → dependencies / devDependencies / transitive |
+| Parse imports via AST | TypeScript AST → import/require/export declarations |
+| Build import graph | file A imports B, B imports C → directed graph |
+| BFS to pages/routes | Reverse-traverse graph → find reachable `page.tsx` / `route.ts` |
+| Indirect dep analysis | Parse `package-lock.json` → which root packages depend on updated pkg? |
+| Post impact comment | PR comment with impact summary |
+| AI QA report (dashed) | Claude API → test plan with verification steps. Only runs when `anthropic-api-key` is provided |
+| Post QA comment (dashed) | PR comment with QA report |
+
+## Prerequisites
+
+- **npm** — Parses `package-lock.json` for transitive dependency analysis. yarn and pnpm are not yet supported.
+- **Next.js App Router** — Traces impact to `page.tsx` / `route.ts` files using App Router conventions.
+
+### Next.js App Router support
+
+- Detects `page.tsx` / `page.ts` as pages
+- Detects `route.ts` in `app/api/` as API routes
+- Resolves `tsconfig.json` path aliases
+- Handles Route Groups `(group)`, Dynamic Segments `[id]`, Catch-all `[...slug]`
+
+> Other package managers (yarn, pnpm) and frameworks (Pages Router, Remix, SvelteKit, etc.) are not currently supported. If you need support for these, please [open an issue](https://github.com/nokki-y/dependabot-insight/issues).
+
+## Security
+
+See [docs/security.md](./docs/security.md) for the full security design document, including:
+
+- Data flow diagram — what is sent to GitHub API and Claude API
+- Built-in protections (secret masking, error sanitization, gitleaks)
+- Considerations for private repositories
+
+## Development
+
+```bash
+git clone https://github.com/nokki-y/dependabot-insight.git
+cd dependabot-insight
+npm install
+```
+
+### Testing and local development
+
+See [docs/testing.md](./docs/testing.md) for how to run scripts locally and perform integration testing.
+
+## License
+
+MIT
