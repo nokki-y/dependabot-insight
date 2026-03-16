@@ -132,9 +132,15 @@ function loadPathAliases(): PathAlias[] {
 
   try {
     const content = fs.readFileSync(tsconfigPath, "utf8");
-    // Strip comments (tsconfig allows them)
-    const stripped = content.replace(/\/\/.*$/gm, "").replace(/\/\*[\s\S]*?\*\//g, "");
-    const tsconfig = JSON.parse(stripped);
+    // tsconfig.json allows comments (JSONC format).
+    // Use TypeScript's built-in parser which handles JSONC correctly,
+    // avoiding issues with naive regex that strips "//" inside strings.
+    const { config, error } = ts.parseConfigFileTextToJson(tsconfigPath, content);
+    if (error) {
+      console.warn(`Warning: Failed to parse tsconfig.json: ${error.messageText}`);
+      return [];
+    }
+    const tsconfig = config;
 
     const paths: Record<string, string[]> = tsconfig.compilerOptions?.paths ?? {};
     const baseUrl = tsconfig.compilerOptions?.baseUrl ?? ".";
