@@ -156,16 +156,16 @@ Post `/dep-insight` as a comment on any Dependabot PR to trigger the analysis ma
 
 ```mermaid
 flowchart TD
-    START[Dependabot PR created] --> S1[Classify dependency\npackage.json → dependencies / devDependencies / transitive]
-    S1 --> S2[Parse imports via AST\nimport/require/export declarations]
-    S2 --> S3[Build import graph\nfile A → B → C as directed graph]
-    S3 --> S4[BFS to pages/routes\nreverse-traverse → find reachable page.tsx / route.ts]
+    START[Dependabot PR created] --> S1[Classify dependency<br>package.json → dependencies / devDependencies / transitive]
+    S1 --> S2[Parse imports via AST<br>import/require/export declarations]
+    S2 --> S3[Build import graph<br>file A → B → C as directed graph]
+    S3 --> S4[BFS to pages/routes<br>reverse-traverse → find reachable page.tsx / route.ts]
     S4 --> CHECK{Pages found?}
-    CHECK -->|No| S5[Indirect dep analysis\npackage-lock.json → which root packages depend on updated pkg?]
-    CHECK -->|Yes| S6[Post impact comment\nPR comment with impact summary]
+    CHECK -->|No| S5[Indirect dep analysis<br>package-lock.json → which root packages depend on updated pkg?]
+    CHECK -->|Yes| S6[Post impact comment<br>PR comment with impact summary]
     S5 --> S6
-    S6 --> S7[AI QA report\nClaude API → test plan with verification steps]
-    S7 --> S8[Post QA comment\nPR comment with QA report]
+    S6 --> S7[AI QA report<br>Claude API → test plan with verification steps]
+    S7 --> S8[Post QA comment<br>PR comment with QA report]
 
     style S7 stroke-dasharray: 5 5
     style S8 stroke-dasharray: 5 5

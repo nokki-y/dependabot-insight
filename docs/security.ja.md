@@ -13,20 +13,20 @@
 ```mermaid
 flowchart TD
     subgraph TARGET["対象リポジトリ（この Action を導入する側）"]
-        F1["package.json — 依存区分の判定\n（dependencies / devDependencies）"]
+        F1["package.json — 依存区分の判定<br>（dependencies / devDependencies）"]
         F2["package-lock.json — 推移的依存関係の追跡"]
         F3["tsconfig.json — パスエイリアスの解決"]
-        F4["src/**/*.ts(x) — import/export 宣言の収集\n（AST解析のため全文を読み取るが、\nPRコメントにも Claude API にも\nソースコード本文は含めない）"]
+        F4["src/**/*.ts(x) — import/export 宣言の収集<br>（AST解析のため全文を読み取るが、<br>PRコメントにも Claude API にも<br>ソースコード本文は含めない）"]
     end
 
-    TARGET -->|"静的解析\n（GitHub Actionsランナー上で実行）"| IA
+    TARGET -->|"静的解析<br>（GitHub Actionsランナー上で実行）"| IA
 
     subgraph IA["影響解析"]
-        EXTRACT["抽出する情報:\n・パッケージ名\n・ファイルパス\n・ルートパス\n・ファイル数\n\n※ ソースコード本文はPRコメントにも\nClaude API にも含めない"]
+        EXTRACT["抽出する情報:<br>・パッケージ名<br>・ファイルパス<br>・ルートパス<br>・ファイル数<br><br>※ ソースコード本文はPRコメントにも<br>Claude API にも含めない"]
     end
 
-    IA --> PR["GitHub PRコメント投稿\n\n静的解析の結果を\nPRコメントとして投稿\n（影響サマリー）"]
-    IA --> CLAUDE["Claude API\n（anthropic-api-key 設定時のみ送信）\n\n送信する情報:\n・影響サマリー（PRコメントと同一内容）\n・QAレポートの出力形式を指定するプロンプト\n\n返却される情報:\n・パッケージの必要性判断\n・テストケースと確認手順\n（= QAレポート。PRコメントとして投稿）"]
+    IA --> PR["GitHub PRコメント投稿<br><br>静的解析の結果を<br>PRコメントとして投稿<br>（影響サマリー）"]
+    IA --> CLAUDE["Claude API<br>（anthropic-api-key 設定時のみ送信）<br><br>送信する情報:<br>・影響サマリー（PRコメントと同一内容）<br>・QAレポートの出力形式を指定するプロンプト<br><br>返却される情報:<br>・パッケージの必要性判断<br>・テストケースと確認手順<br>（= QAレポート。PRコメントとして投稿）"]
 
     style CLAUDE stroke-dasharray: 5 5
 ```

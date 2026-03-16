@@ -157,16 +157,16 @@ Dependabot PR に `/dep-insight` とコメントすると、手動で解析を�
 
 ```mermaid
 flowchart TD
-    START[Dependabot PR 作成] --> S1[パッケージの依存区分を判定\npackage.json → dependencies / devDependencies / transitive]
-    S1 --> S2[importをAST解析\nimport/require/export宣言を収集]
-    S2 --> S3[importグラフを構築\nファイル A → B → C を有向グラフ化]
-    S3 --> S4[BFSでページ到達性を探索\n逆方向に探索 → page.tsx / route.ts に到達するか判定]
+    START[Dependabot PR 作成] --> S1[パッケージの依存区分を判定<br>package.json → dependencies / devDependencies / transitive]
+    S1 --> S2[importをAST解析<br>import/require/export宣言を収集]
+    S2 --> S3[importグラフを構築<br>ファイル A → B → C を有向グラフ化]
+    S3 --> S4[BFSでページ到達性を探索<br>逆方向に探索 → page.tsx / route.ts に到達するか判定]
     S4 --> CHECK{ページが見つかった？}
-    CHECK -->|いいえ| S5[他パッケージ経由の影響を分析\npackage-lock.json → どのパッケージが更新対象に依存しているか]
-    CHECK -->|はい| S6[影響解析コメントを投稿\nPRコメント 影響サマリー]
+    CHECK -->|いいえ| S5[他パッケージ経由の影響を分析<br>package-lock.json → どのパッケージが更新対象に依存しているか]
+    CHECK -->|はい| S6[影響解析コメントを投稿<br>PRコメント 影響サマリー]
     S5 --> S6
-    S6 --> S7[AI品質保証レポートを生成\nClaude API → テスト計画と確認手順]
-    S7 --> S8[QAレポートコメントを投稿\nPRコメント 品質保証レポート]
+    S6 --> S7[AI品質保証レポートを生成<br>Claude API → テスト計画と確認手順]
+    S7 --> S8[QAレポートコメントを投稿<br>PRコメント 品質保証レポート]
 
     style S7 stroke-dasharray: 5 5
     style S8 stroke-dasharray: 5 5

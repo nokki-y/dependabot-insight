@@ -13,20 +13,20 @@ This document describes the security architecture of dependabot-insight — what
 ```mermaid
 flowchart TD
     subgraph TARGET["Target Repository (where this action is used)"]
-        F1["package.json — classify dependency\n(dependencies / devDependencies)"]
+        F1["package.json — classify dependency<br>(dependencies / devDependencies)"]
         F2["package-lock.json — trace transitive dependencies"]
         F3["tsconfig.json — resolve path aliases"]
-        F4["src/**/*.ts(x) — collect import/export declarations\n(full file read for AST parsing, but source code body\nis NOT included in PR comments or sent to Claude API)"]
+        F4["src/**/*.ts(x) — collect import/export declarations<br>(full file read for AST parsing, but source code body<br>is NOT included in PR comments or sent to Claude API)"]
     end
 
-    TARGET -->|"Static analysis\n(GitHub Actions runner)"| IA
+    TARGET -->|"Static analysis<br>(GitHub Actions runner)"| IA
 
     subgraph IA["Impact Analysis"]
-        EXTRACT["Extracts:\n• package names\n• file paths\n• route paths\n• file counts\n\n※ Source code body is NOT included\nin PR comments or sent to Claude API"]
+        EXTRACT["Extracts:<br>• package names<br>• file paths<br>• route paths<br>• file counts<br><br>※ Source code body is NOT included<br>in PR comments or sent to Claude API"]
     end
 
-    IA --> PR["GitHub PR Comment\n\nPosts: static analysis results\nas PR comment (impact summary)"]
-    IA --> CLAUDE["Claude API\n(only when anthropic-api-key is provided)\n\nSends:\n• impact summary (same as PR comment)\n• prompt specifying QA report format\n\nReturns:\n• package necessity judgment\n• test cases with steps\n(= QA report, posted as PR comment)"]
+    IA --> PR["GitHub PR Comment<br><br>Posts: static analysis results<br>as PR comment (impact summary)"]
+    IA --> CLAUDE["Claude API<br>(only when anthropic-api-key is provided)<br><br>Sends:<br>• impact summary (same as PR comment)<br>• prompt specifying QA report format<br><br>Returns:<br>• package necessity judgment<br>• test cases with steps<br>(= QA report, posted as PR comment)"]
 
     style CLAUDE stroke-dasharray: 5 5
 ```

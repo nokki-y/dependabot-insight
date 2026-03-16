@@ -10,7 +10,7 @@ dependabot-insight consists of three components that run sequentially as a GitHu
 
 ```mermaid
 flowchart TD
-    A[action.yml\nOrchestration] --> B[Steps 1-4\nResolve PR info, dependency names, setup Node.js]
+    A[action.yml<br>Orchestration] --> B[Steps 1-4<br>Resolve PR info, dependency names, setup Node.js]
     B --> C[Step 5: impact-analysis.ts]
     C -->|PR comment| D[Impact summary]
     C -->|File| E[/tmp/dependabot-impact-analysis.md/]
@@ -85,15 +85,15 @@ Analyze the target repository's source code to determine which Next.js pages and
 
 ```mermaid
 flowchart TD
-    S1[1. Classify dependency] --> S2[2. Load path aliases\nfrom tsconfig.json]
-    S2 --> S3[3. Walk source files\nsrc/**/*.ts-x excluding tests]
-    S3 --> S4[4. Parse imports\nTypeScript AST]
-    S4 --> S5[5. Build import graph\nforward + reverse]
-    S5 --> S6[6. Find directly impacted files\nexternal imports matching updated package]
-    S6 --> S7[7. BFS from impacted files\nreverse graph → page.tsx / route.ts]
+    S1[1. Classify dependency] --> S2[2. Load path aliases<br>from tsconfig.json]
+    S2 --> S3[3. Walk source files<br>src/**/*.ts-x excluding tests]
+    S3 --> S4[4. Parse imports<br>TypeScript AST]
+    S4 --> S5[5. Build import graph<br>forward + reverse]
+    S5 --> S6[6. Find directly impacted files<br>external imports matching updated package]
+    S6 --> S7[7. BFS from impacted files<br>reverse graph → page.tsx / route.ts]
     S7 --> CHECK{Pages found?}
     CHECK -->|Yes| S9[9. Build comment and post]
-    CHECK -->|No| S8[8. Indirect dependency analysis\npackage-lock.json → intermediate packages → repeat 6-7]
+    CHECK -->|No| S8[8. Indirect dependency analysis<br>package-lock.json → intermediate packages → repeat 6-7]
     S8 --> S9
 
     S1 -.->|package.json| S1A[dependencies / devDependencies]
@@ -146,10 +146,10 @@ Read the impact analysis output, send it to the Claude API with a structured pro
 
 ```mermaid
 flowchart TD
-    T1[1. Read impact analysis Markdown\nfrom IMPACT_OUTPUT_PATH] --> T2[2. Build system prompt]
-    T2 --> T3[3. Build user prompt\nimpact Markdown + output format template]
-    T3 --> T4[4. Call Claude API\nmodel: AI_MODEL, max_tokens: 4096]
-    T4 --> T5[5. Post/update PR comment\nmarker: dependabot-test-recommendation]
+    T1[1. Read impact analysis Markdown<br>from IMPACT_OUTPUT_PATH] --> T2[2. Build system prompt]
+    T2 --> T3[3. Build user prompt<br>impact Markdown + output format template]
+    T3 --> T4[4. Call Claude API<br>model: AI_MODEL, max_tokens: 4096]
+    T4 --> T5[5. Post/update PR comment<br>marker: dependabot-test-recommendation]
 
     T2 -.-> T2A[Reviewer-focused structure]
     T2 -.-> T2B[Language instruction: en/ja/other]
@@ -199,22 +199,22 @@ The prompt explicitly instructs Claude to include commands like `npm ls <package
 ```mermaid
 flowchart TD
     subgraph action.yml
-        ENV1[Environment variables:\nDEPENDENCY_NAMES, UPDATE_TYPE,\nREPOSITORY, PR_NUMBER,\nGITHUB_TOKEN, PR_HEAD_SHA]
+        ENV1[Environment variables:<br>DEPENDENCY_NAMES, UPDATE_TYPE,<br>REPOSITORY, PR_NUMBER,<br>GITHUB_TOKEN, PR_HEAD_SHA]
     end
 
     subgraph impact-analysis.ts
         direction TB
-        IA_READ[Reads from target repository:\npackage.json, package-lock.json,\ntsconfig.json, src/**/*.ts-x]
-        IA_WRITE_COMMENT[Writes: PR comment\nmarker: dependabot-impact-review]
+        IA_READ[Reads from target repository:<br>package.json, package-lock.json,<br>tsconfig.json, src/**/*.ts-x]
+        IA_WRITE_COMMENT[Writes: PR comment<br>marker: dependabot-impact-review]
         IA_WRITE_FILE[Writes: /tmp/dependabot-impact-analysis.md]
     end
 
     subgraph test-recommendation.ts
         direction TB
-        TR_READ[Reads:\n/tmp/dependabot-impact-analysis.md]
-        TR_ENV[Additional env vars:\nANTHROPIC_API_KEY, AI_MODEL,\nAI_LANGUAGE, BASE_URL]
-        TR_CALL[Calls: Claude API\nPOST /v1/messages]
-        TR_WRITE[Writes: PR comment\nmarker: dependabot-test-recommendation]
+        TR_READ[Reads:<br>/tmp/dependabot-impact-analysis.md]
+        TR_ENV[Additional env vars:<br>ANTHROPIC_API_KEY, AI_MODEL,<br>AI_LANGUAGE, BASE_URL]
+        TR_CALL[Calls: Claude API<br>POST /v1/messages]
+        TR_WRITE[Writes: PR comment<br>marker: dependabot-test-recommendation]
     end
 
     ENV1 --> IA_READ

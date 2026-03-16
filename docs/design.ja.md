@@ -10,7 +10,7 @@ dependabot-insight は、GitHub Actions の composite action として順番に�
 
 ```mermaid
 flowchart TD
-    A[action.yml\nオーケストレーション] --> B[ステップ 1-4\nPR情報の解決、依存パッケージ名の取得、Node.jsセットアップ]
+    A[action.yml<br>オーケストレーション] --> B[ステップ 1-4<br>PR情報の解決、依存パッケージ名の取得、Node.jsセットアップ]
     B --> C[ステップ 5: impact-analysis.ts]
     C -->|PRコメント| D[影響サマリー]
     C -->|ファイル| E[/tmp/dependabot-impact-analysis.md/]
@@ -85,15 +85,15 @@ composite action の唯一のデメリットは `npm ci` の起動オーバー�
 
 ```mermaid
 flowchart TD
-    S1[1. 依存パッケージの分類] --> S2[2. パスエイリアスの読み込み\ntsconfig.json]
-    S2 --> S3[3. ソースファイルの走査\nsrc/**/*.ts-x テスト等は除外]
-    S3 --> S4[4. importの解析\nTypeScript AST]
-    S4 --> S5[5. importグラフの構築\n順方向 + 逆方向]
-    S5 --> S6[6. 直接影響ファイルの特定\n外部importが更新対象パッケージに一致]
-    S6 --> S7[7. 影響ファイルからBFS\n逆方向グラフ → page.tsx / route.ts]
+    S1[1. 依存パッケージの分類] --> S2[2. パスエイリアスの読み込み<br>tsconfig.json]
+    S2 --> S3[3. ソースファイルの走査<br>src/**/*.ts-x テスト等は除外]
+    S3 --> S4[4. importの解析<br>TypeScript AST]
+    S4 --> S5[5. importグラフの構築<br>順方向 + 逆方向]
+    S5 --> S6[6. 直接影響ファイルの特定<br>外部importが更新対象パッケージに一致]
+    S6 --> S7[7. 影響ファイルからBFS<br>逆方向グラフ → page.tsx / route.ts]
     S7 --> CHECK{ページが見つかった？}
     CHECK -->|はい| S9[9. コメントの生成と投稿]
-    CHECK -->|いいえ| S8[8. 他パッケージ経由の影響解析\npackage-lock.json → 中間パッケージ → 6-7を繰り返す]
+    CHECK -->|いいえ| S8[8. 他パッケージ経由の影響解析<br>package-lock.json → 中間パッケージ → 6-7を繰り返す]
     S8 --> S9
 
     S1 -.->|package.json| S1A[dependencies / devDependencies]
@@ -146,10 +146,10 @@ TypeScript コンパイラ API（`ts.createSourceFile`）は、動的 `import()`
 
 ```mermaid
 flowchart TD
-    T1[1. 影響解析Markdownを読み取り\nIMPACT_OUTPUT_PATHから] --> T2[2. システムプロンプトを構築]
-    T2 --> T3[3. ユーザープロンプトを構築\n影響解析Markdown + 出力フォーマットテンプレート]
-    T3 --> T4[4. Claude API呼び出し\nモデル: AI_MODEL, max_tokens: 4096]
-    T4 --> T5[5. PRコメントを投稿/更新\nマーカー: dependabot-test-recommendation]
+    T1[1. 影響解析Markdownを読み取り<br>IMPACT_OUTPUT_PATHから] --> T2[2. システムプロンプトを構築]
+    T2 --> T3[3. ユーザープロンプトを構築<br>影響解析Markdown + 出力フォーマットテンプレート]
+    T3 --> T4[4. Claude API呼び出し<br>モデル: AI_MODEL, max_tokens: 4096]
+    T4 --> T5[5. PRコメントを投稿/更新<br>マーカー: dependabot-test-recommendation]
 
     T2 -.-> T2A[レビュワー視点の構造]
     T2 -.-> T2B[言語指示: en/ja/その他]
@@ -199,22 +199,22 @@ flowchart TD
 ```mermaid
 flowchart TD
     subgraph action.yml
-        ENV1[環境変数:\nDEPENDENCY_NAMES, UPDATE_TYPE,\nREPOSITORY, PR_NUMBER,\nGITHUB_TOKEN, PR_HEAD_SHA]
+        ENV1[環境変数:<br>DEPENDENCY_NAMES, UPDATE_TYPE,<br>REPOSITORY, PR_NUMBER,<br>GITHUB_TOKEN, PR_HEAD_SHA]
     end
 
     subgraph impact-analysis.ts
         direction TB
-        IA_READ[対象リポジトリから読み取り:\npackage.json, package-lock.json,\ntsconfig.json, src/**/*.ts-x]
-        IA_WRITE_COMMENT[書き込み: PRコメント\nマーカー: dependabot-impact-review]
+        IA_READ[対象リポジトリから読み取り:<br>package.json, package-lock.json,<br>tsconfig.json, src/**/*.ts-x]
+        IA_WRITE_COMMENT[書き込み: PRコメント<br>マーカー: dependabot-impact-review]
         IA_WRITE_FILE[書き込み: /tmp/dependabot-impact-analysis.md]
     end
 
     subgraph test-recommendation.ts
         direction TB
-        TR_READ[読み取り:\n/tmp/dependabot-impact-analysis.md]
-        TR_ENV[追加の環境変数:\nANTHROPIC_API_KEY, AI_MODEL,\nAI_LANGUAGE, BASE_URL]
-        TR_CALL[呼び出し: Claude API\nPOST /v1/messages]
-        TR_WRITE[書き込み: PRコメント\nマーカー: dependabot-test-recommendation]
+        TR_READ[読み取り:<br>/tmp/dependabot-impact-analysis.md]
+        TR_ENV[追加の環境変数:<br>ANTHROPIC_API_KEY, AI_MODEL,<br>AI_LANGUAGE, BASE_URL]
+        TR_CALL[呼び出し: Claude API<br>POST /v1/messages]
+        TR_WRITE[書き込み: PRコメント<br>マーカー: dependabot-test-recommendation]
     end
 
     ENV1 --> IA_READ
