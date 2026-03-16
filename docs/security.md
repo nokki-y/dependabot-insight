@@ -118,7 +118,9 @@ The complete list of environment variables that dependabot-insight reads is show
 
 Variables marked "Sensitive" are subject to log masking and error message sanitization (details in the sections below).
 
-## Built-in protections
+## Protections for users (at Action runtime)
+
+These protections apply when the Action runs on a Dependabot PR in the target repository.
 
 ### 1. `GITHUB_TOKEN` / `ANTHROPIC_API_KEY` / `BASE_URL` masking in logs
 
@@ -136,11 +138,15 @@ If a GitHub PR comment post or Claude API call fails, the error message may cont
 - `Bearer <GITHUB_TOKEN value>` → `Bearer ***`
 - Anthropic API key patterns (`sk-ant-*`) → `***`
 - GitHub token patterns (`ghp_*`, `gho_*`, `ghs_*`, `ghr_*`) → `***`
-- Exact matches of the `GITHUB_TOKEN` and `ANTHROPIC_API_KEY` values → `***`
+- Exact matches of the `GITHUB_TOKEN`, `ANTHROPIC_API_KEY`, and `BASE_URL` values → `***`
+
+## Protections for contributors (when developing dependabot-insight itself)
+
+These protections prevent contributors to the dependabot-insight repository from accidentally committing secrets.
 
 ### 3. Secret scanning with gitleaks
 
-[gitleaks](https://github.com/gitleaks/gitleaks) is configured at two levels to prevent accidental secret commits:
+[gitleaks](https://github.com/gitleaks/gitleaks) is configured at two levels:
 
 - **CI** (`.github/workflows/gitleaks.yml`): Scans every push and pull request. Covers 800+ secret patterns
 - **Local** (`.pre-commit-config.yaml`): Available as a pre-commit hook. Install with `pre-commit install`

@@ -116,7 +116,9 @@ dependabot-insight が使用する環境変数は以下の通りです。これ�
 
 「秘匿対象」の環境変数は、ログへのマスキングとエラーメッセージのサニタイズの対象です（詳細は以下のセクションで説明）。
 
-## 組み込みの保護機能
+## 利用者向けの保護機能（Action 実行時）
+
+この Action を導入したリポジトリで Dependabot PR が作成され、Action が実行される際に機能する保護です。
 
 ### 1. ログにおける `GITHUB_TOKEN` / `ANTHROPIC_API_KEY` / `BASE_URL` のマスキング
 
@@ -134,11 +136,15 @@ GitHub PRコメント投稿や Claude API 呼び出しが失敗した場合、�
 - `Bearer <GITHUB_TOKEN の値>` → `Bearer ***`
 - Anthropic API キーのパターン（`sk-ant-*`）→ `***`
 - GitHub トークンのパターン（`ghp_*`, `gho_*`, `ghs_*`, `ghr_*`）→ `***`
-- `GITHUB_TOKEN` および `ANTHROPIC_API_KEY` の値そのものとの完全一致 → `***`
+- `GITHUB_TOKEN`、`ANTHROPIC_API_KEY`、`BASE_URL` の値そのものとの完全一致 → `***`
+
+## 開発者向けの保護機能（dependabot-insight 自体の開発時）
+
+dependabot-insight リポジトリにコントリビュートする開発者が、誤ってシークレットをコミットすることを防止する保護です。
 
 ### 3. gitleaks によるシークレットスキャン
 
-[gitleaks](https://github.com/gitleaks/gitleaks) がシークレットの誤コミットを防止するために2段階で構成されています:
+[gitleaks](https://github.com/gitleaks/gitleaks) が2段階で構成されています:
 
 - **CI**（`.github/workflows/gitleaks.yml`）: すべての push と PR でスキャン。800種類以上のシークレットパターンに対応
 - **ローカル**（`.pre-commit-config.yaml`）: pre-commit フックとして利用可能。`pre-commit install` でインストール
