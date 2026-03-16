@@ -1,0 +1,27 @@
+{
+  "name": "dependabot-insight",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Analyze the impact scope of Dependabot PRs with static analysis and generate AI-powered QA reports",
+  "type": "module",
+  "scripts": {
+    "build": "tsc --noEmit",
+    "lint": "eslint src/",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "typescript": "^5.8.2"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.3",
+    "@types/node": "^22.13.14"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nokki-y/dependabot-insight.git"
+  }
+}
