@@ -215,7 +215,7 @@ Dependabot PR 作成
 - `tsconfig.json` のパスエイリアスを解決
 - Route Groups `(group)`、Dynamic Segments `[id]`、Catch-all `[...slug]` に対応
 
-> 他のパッケージマネージャー（yarn、pnpm）やフレームワーク（Pages Router、Remix、SvelteKit 等）は今後のリリースで対応予定です。
+> 他のパッケージマネージャー（yarn、pnpm）やフレームワーク（Pages Router、Remix、SvelteKit 等）には現在対応していません。対応が必要な場合は [Issue](https://github.com/nokki-y/dependabot-insight/issues) でリクエストしてください。
 
 ## セキュリティ
 

@@ -214,7 +214,7 @@ Dependabot PR created
 - Resolves `tsconfig.json` path aliases
 - Handles Route Groups `(group)`, Dynamic Segments `[id]`, Catch-all `[...slug]`
 
-> Support for other package managers (yarn, pnpm) and frameworks (Pages Router, Remix, SvelteKit, etc.) is planned for future releases.
+> Other package managers (yarn, pnpm) and frameworks (Pages Router, Remix, SvelteKit, etc.) are not currently supported. If you need support for these, please [open an issue](https://github.com/nokki-y/dependabot-insight/issues).
 
 ## Security
 
