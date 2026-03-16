@@ -198,29 +198,11 @@ Dependabot PR created
 
 ## Security
 
-### What data is sent externally?
+See [docs/security.md](./docs/security.md) for the full security design document, including:
 
-| Destination | Data Sent | NOT Sent |
-|-------------|-----------|----------|
-| **GitHub API** | PR comments (impact summary, QA report) | Source code, tokens |
-| **Claude API** | Impact analysis summary (package names, route paths, file counts) | Source code content, tokens, credentials |
-
-### Built-in protections
-
-- **Secret masking** — `GITHUB_TOKEN` and `ANTHROPIC_API_KEY` are registered with `::add-mask::` at startup, so GitHub Actions automatically redacts them from all log output
-- **Error sanitization** — API error messages are sanitized to remove any accidentally included tokens or keys before being logged
-- **No source code transmission** — Only the impact analysis metadata (package names, file paths, route patterns) is sent to Claude API. No actual source code content is read or transmitted
-- **Minimal permissions** — The action only requires `contents: read`, `pull-requests: write`, and `issues: write`
-
-### For private repositories
-
-If your repository is private, be aware that the following information will appear in PR comments (visible to anyone with repo access) and be sent to the Claude API:
-
-- Package names and versions
-- File paths (relative to project root)
-- Route patterns (e.g., `/admin/users/:id`)
-
-If this is a concern, you can omit the `anthropic-api-key` input to disable the AI QA report — only the static impact analysis (which stays within GitHub) will be posted.
+- Data flow diagram — what is sent to GitHub API and Claude API
+- Built-in protections (secret masking, error sanitization, gitleaks)
+- Considerations for private repositories
 
 ## Development
 
