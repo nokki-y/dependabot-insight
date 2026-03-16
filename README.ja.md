@@ -142,7 +142,7 @@ Dependabot PR に `/dep-insight` とコメントすると、手動で解析を�
 | `github-token` | Yes | — | PR コメント投稿用の GitHub トークン |
 | `anthropic-api-key` | No | — | AI 品質保証レポート生成用の Anthropic API キー。省略時は静的解析のみ投稿 |
 | `ai-model` | No | `claude-sonnet-4-6` | QA レポート生成に使用する Claude モデル |
-| `ai-language` | No | `en` | AI レポートの言語（`en`, `ja` 等） |
+| `ai-language` | No | `en` | AI レポートの言語。`en`（英語）と `ja`（日本語）は最適化されたプロンプトを使用。その他の言語コード（例: `ko`, `zh`）はそのまま Claude に渡される |
 | `base-url` | No | — | GUI 確認用リンクのベース URL（例: Vercel プレビュー URL） |
 
 ## 仕組み
