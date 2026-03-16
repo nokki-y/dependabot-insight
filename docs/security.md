@@ -68,11 +68,12 @@ This document describes the security architecture of dependabot-insight — what
 
 ### What is posted in PR comments
 
-- PR comments containing:
-  - Package names and dependency classification
-  - Relative file paths (e.g., `src/components/Button.tsx`)
-  - Route patterns (e.g., `/admin/users/:id`)
-  - File and page counts
+The following information is included in PR comments so that the reviewer can determine which pages are affected by the package update:
+
+- **Package names and dependency classification** — identifies the updated package and whether it is a dependency, devDependency, or transitive
+- **Relative file paths** (e.g., `src/components/Button.tsx`) — identifies which files directly import the updated package
+- **Route patterns** (e.g., `/admin/users/:id`) — Next.js pages reached by traversing the import graph from the affected files, indicating which screens the reviewer should verify
+- **File and page counts** — conveys the scale of the impact scope
 
 ### What is sent to Claude API
 
