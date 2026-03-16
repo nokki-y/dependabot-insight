@@ -8,22 +8,21 @@
 
 dependabot-insight は、GitHub Actions の composite action として順番に実行される3つのコンポーネントで構成されています:
 
+```mermaid
+flowchart TD
+    A[action.yml\nオーケストレーション] --> B[ステップ 1-4\nPR情報の解決、依存パッケージ名の取得、Node.jsセットアップ]
+    B --> C[ステップ 5: impact-analysis.ts]
+    C -->|PRコメント| D[影響サマリー]
+    C -->|ファイル| E[/tmp/dependabot-impact-analysis.md/]
+    E --> F[ステップ 6: test-recommendation.ts]
+    F -->|PRコメント| G[QAレポート]
+
+    style F stroke-dasharray: 5 5
+    linkStyle 3 stroke-dasharray: 5 5
+    linkStyle 4 stroke-dasharray: 5 5
 ```
-action.yml（オーケストレーション）
-    │
-    ├─ ステップ 1-4: PR 情報の解決、依存パッケージ名の取得、Node.js セットアップ
-    │
-    ├─ ステップ 5: impact-analysis.ts
-    │              │
-    │              ├─ 入力:  対象リポジトリのファイル + 環境変数
-    │              ├─ 出力: PR コメント（影響サマリー）
-    │              └─ 出力: /tmp/dependabot-impact-analysis.md（次のステップ用）
-    │
-    └─ ステップ 6: test-recommendation.ts（ANTHROPIC_API_KEY 設定時のみ）
-                   │
-                   ├─ 入力:  /tmp/dependabot-impact-analysis.md + 環境変数
-                   └─ 出力: PR コメント（QA レポート）
-```
+
+> ステップ 6（破線）は `ANTHROPIC_API_KEY` 設定時のみ実行されます。
 
 2つのスクリプトは一時ファイル（`IMPACT_OUTPUT_PATH`）を介してデカップリングされています。これにより:
 - `impact-analysis.ts` は AI ステップなしで単独実行可能
@@ -84,42 +83,21 @@ composite action の唯一のデメリットは `npm ci` の起動オーバー�
 
 ### 処理フロー
 
-```
-1. 依存パッケージの分類
-   ├─ package.json を読み取り → dependencies / devDependencies のどちらか？
-   └─ どちらでもない → package-lock.json を解析 → transitive（どのパッケージ経由か？）
+```mermaid
+flowchart TD
+    S1[1. 依存パッケージの分類] --> S2[2. パスエイリアスの読み込み\ntsconfig.json]
+    S2 --> S3[3. ソースファイルの走査\nsrc/**/*.ts-x テスト等は除外]
+    S3 --> S4[4. importの解析\nTypeScript AST]
+    S4 --> S5[5. importグラフの構築\n順方向 + 逆方向]
+    S5 --> S6[6. 直接影響ファイルの特定\n外部importが更新対象パッケージに一致]
+    S6 --> S7[7. 影響ファイルからBFS\n逆方向グラフ → page.tsx / route.ts]
+    S7 --> CHECK{ページが見つかった？}
+    CHECK -->|はい| S9[9. コメントの生成と投稿]
+    CHECK -->|いいえ| S8[8. 他パッケージ経由の影響解析\npackage-lock.json → 中間パッケージ → 6-7を繰り返す]
+    S8 --> S9
 
-2. パスエイリアスの読み込み
-   └─ tsconfig.json を読み取り → compilerOptions.paths を抽出
-
-3. ソースファイルの走査
-   └─ src/**/*.ts(x) を再帰的にスキャン（テストファイル、node_modules 等は除外）
-
-4. import の解析（TypeScript AST）
-   └─ 各ファイルから以下を抽出:
-      ├─ 内部 import（エイリアスと相対パスでファイルパスに解決）
-      └─ 外部 import（npm パッケージ名）
-
-5. import グラフの構築
-   ├─ 順方向グラフ: ファイル → [そのファイルが import しているファイル群]
-   └─ 逆方向グラフ: ファイル → [そのファイルを import しているファイル群]
-
-6. 直接影響ファイルの特定
-   └─ 外部 import が更新対象パッケージ名に一致するファイル
-
-7. 影響ファイルからの BFS（逆方向グラフを使用）
-   └─ 各影響ファイルから上方向に探索し、以下を発見:
-      ├─ page.tsx ファイル → Next.js ページ
-      └─ app/api/ 配下の route.ts ファイル → API ルート
-
-8. （ページが見つからない場合）他パッケージ経由の影響解析
-   ├─ package-lock.json を解析し、更新対象パッケージに依存するルートパッケージを特定
-   └─ 各中間パッケージについてステップ 6-7 を繰り返す
-
-9. コメントの生成と投稿
-   ├─ 分類、影響サマリー、影響ページ/ルートを含む Markdown を生成
-   ├─ PR コメントを投稿/更新（HTML マーカー <!-- dependabot-impact-review --> によるアップサート）
-   └─ 次のステップ用に Markdown を IMPACT_OUTPUT_PATH に保存
+    S1 -.->|package.json| S1A[dependencies / devDependencies]
+    S1 -.->|package-lock.json| S1B[transitive: どのパッケージ経由か？]
 ```
 
 ### 主要な関数
@@ -166,23 +144,16 @@ TypeScript コンパイラ API（`ts.createSourceFile`）は、動的 `import()`
 
 ### 処理フロー
 
-```
-1. IMPACT_OUTPUT_PATH から影響解析の Markdown を読み取り
+```mermaid
+flowchart TD
+    T1[1. 影響解析Markdownを読み取り\nIMPACT_OUTPUT_PATHから] --> T2[2. システムプロンプトを構築]
+    T2 --> T3[3. ユーザープロンプトを構築\n影響解析Markdown + 出力フォーマットテンプレート]
+    T3 --> T4[4. Claude API呼び出し\nモデル: AI_MODEL, max_tokens: 4096]
+    T4 --> T5[5. PRコメントを投稿/更新\nマーカー: dependabot-test-recommendation]
 
-2. システムプロンプトを構築
-   ├─ レビュワー視点の構造（パッケージの必要性 → 変更内容 → 影響範囲 → QA 計画 → 前提条件）
-   ├─ 言語指示（en/ja/その他）
-   └─ GUI URL ガイダンス（base-url またはプレースホルダー）
-
-3. ユーザープロンプトを構築
-   └─ 影響解析 Markdown + 出力フォーマットテンプレート
-
-4. Claude API を呼び出し
-   ├─ モデル: AI_MODEL（デフォルト: claude-sonnet-4-6）
-   ├─ 最大トークン: 4096
-   └─ レスポンス解析: 最初の text ブロックを取得
-
-5. PR コメントを投稿/更新（マーカー <!-- dependabot-test-recommendation --> によるアップサート）
+    T2 -.-> T2A[レビュワー視点の構造]
+    T2 -.-> T2B[言語指示: en/ja/その他]
+    T2 -.-> T2C[GUI URLガイダンス: base-urlまたはプレースホルダー]
 ```
 
 ### プロンプト設計
@@ -225,40 +196,33 @@ TypeScript コンパイラ API（`ts.createSourceFile`）は、動的 `import()`
 
 ## 5. コンポーネント間のデータフロー
 
-```
-action.yml
-    │
-    │  環境変数:
-    │  DEPENDENCY_NAMES, UPDATE_TYPE, REPOSITORY, PR_NUMBER,
-    │  GITHUB_TOKEN, PR_HEAD_SHA
-    │
-    ▼
-impact-analysis.ts
-    │
-    │  対象リポジトリから読み取り:
-    │  ├─ package.json（依存区分の分類）
-    │  ├─ package-lock.json（推移的依存ツリー）
-    │  ├─ tsconfig.json（パスエイリアス）
-    │  └─ src/**/*.ts(x)（AST 経由で import 宣言を収集）
-    │
-    │  書き込み:
-    │  ├─ PR コメント（GitHub API 経由、マーカー: <!-- dependabot-impact-review -->）
-    │  └─ /tmp/dependabot-impact-analysis.md（Markdown ファイル）
-    │
-    ▼
-test-recommendation.ts
-    │
-    │  読み取り:
-    │  └─ /tmp/dependabot-impact-analysis.md（前ステップの出力）
-    │
-    │  追加の環境変数:
-    │  ANTHROPIC_API_KEY, AI_MODEL, AI_LANGUAGE, BASE_URL
-    │
-    │  呼び出し:
-    │  └─ Claude API（POST /v1/messages）
-    │
-    │  書き込み:
-    │  └─ PR コメント（GitHub API 経由、マーカー: <!-- dependabot-test-recommendation -->）
+```mermaid
+flowchart TD
+    subgraph action.yml
+        ENV1[環境変数:\nDEPENDENCY_NAMES, UPDATE_TYPE,\nREPOSITORY, PR_NUMBER,\nGITHUB_TOKEN, PR_HEAD_SHA]
+    end
+
+    subgraph impact-analysis.ts
+        direction TB
+        IA_READ[対象リポジトリから読み取り:\npackage.json, package-lock.json,\ntsconfig.json, src/**/*.ts-x]
+        IA_WRITE_COMMENT[書き込み: PRコメント\nマーカー: dependabot-impact-review]
+        IA_WRITE_FILE[書き込み: /tmp/dependabot-impact-analysis.md]
+    end
+
+    subgraph test-recommendation.ts
+        direction TB
+        TR_READ[読み取り:\n/tmp/dependabot-impact-analysis.md]
+        TR_ENV[追加の環境変数:\nANTHROPIC_API_KEY, AI_MODEL,\nAI_LANGUAGE, BASE_URL]
+        TR_CALL[呼び出し: Claude API\nPOST /v1/messages]
+        TR_WRITE[書き込み: PRコメント\nマーカー: dependabot-test-recommendation]
+    end
+
+    ENV1 --> IA_READ
+    IA_READ --> IA_WRITE_COMMENT
+    IA_READ --> IA_WRITE_FILE
+    IA_WRITE_FILE --> TR_READ
+    TR_READ --> TR_CALL
+    TR_CALL --> TR_WRITE
 ```
 
 ### インターフェース契約

@@ -10,60 +10,25 @@ This document describes the security architecture of dependabot-insight — what
 
 ## Data flow
 
-```
-┌──────────────────────────────────────────────────────────┐
-│  Target Repository (where this action is used)           │
-│                                                          │
-│  Files read and their purpose:                           │
-│  - package.json       ... classify dependency            │
-│                          (dependencies / devDependencies) │
-│  - package-lock.json  ... trace transitive dependencies  │
-│  - tsconfig.json      ... resolve path aliases           │
-│  - src/**/*.ts(x)     ... collect import/export          │
-│                          declarations only               │
-│                          (full file read for AST parsing  │
-│                           but source code body is NOT     │
-│                           included in PR comments or      │
-│                           sent to Claude API)             │
-└─────────────────────────┬────────────────────────────────┘
-                          │
-                          │ Static analysis (runs in GitHub Actions runner)
-                          ▼
-             ┌──────────────────────────┐
-             │  Impact Analysis         │
-             │                          │
-             │  Extracts:               │
-             │  - package names         │
-             │  - file paths            │
-             │  - route paths           │
-             │  - file counts           │
-             │                          │
-             │  * Source code body is    │
-             │    NOT included in PR     │
-             │    comments or sent to    │
-             │    Claude API             │
-             └────────────┬─────────────┘
-                          │
-               ┌──────────┼──────────┐
-               ▼                     ▼
-     ┌────────────────────────┐  ┌──────────────────────────────┐
-     │  GitHub PR Comment     │  │  Claude API                  │
-     │                        │  │  (only when                   │
-     │  Posts:                │  │   anthropic-api-key           │
-     │  Static analysis       │  │   is provided)                │
-     │  results as            │  │                               │
-     │  PR comment            │  │  Sends:                       │
-     │  (impact summary)      │  │  - impact summary             │
-     │                        │  │    (same as PR comment)       │
-     │                        │  │  - prompt specifying output   │
-     │                        │  │    format for QA report       │
-     │                        │  │                               │
-     │                        │  │  Returns:                     │
-     │                        │  │  - package necessity judgment │
-     │                        │  │  - test cases with steps      │
-     │                        │  │  (= QA report, posted as      │
-     │                        │  │    PR comment)                │
-     └────────────────────────┘  └──────────────────────────────┘
+```mermaid
+flowchart TD
+    subgraph TARGET["Target Repository (where this action is used)"]
+        F1["package.json — classify dependency\n(dependencies / devDependencies)"]
+        F2["package-lock.json — trace transitive dependencies"]
+        F3["tsconfig.json — resolve path aliases"]
+        F4["src/**/*.ts(x) — collect import/export declarations\n(full file read for AST parsing, but source code body\nis NOT included in PR comments or sent to Claude API)"]
+    end
+
+    TARGET -->|"Static analysis\n(GitHub Actions runner)"| IA
+
+    subgraph IA["Impact Analysis"]
+        EXTRACT["Extracts:\n• package names\n• file paths\n• route paths\n• file counts\n\n※ Source code body is NOT included\nin PR comments or sent to Claude API"]
+    end
+
+    IA --> PR["GitHub PR Comment\n\nPosts: static analysis results\nas PR comment (impact summary)"]
+    IA --> CLAUDE["Claude API\n(only when anthropic-api-key is provided)\n\nSends:\n• impact summary (same as PR comment)\n• prompt specifying QA report format\n\nReturns:\n• package necessity judgment\n• test cases with steps\n(= QA report, posted as PR comment)"]
+
+    style CLAUDE stroke-dasharray: 5 5
 ```
 
 ### What is posted in PR comments

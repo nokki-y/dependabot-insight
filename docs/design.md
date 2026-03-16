@@ -8,22 +8,21 @@ This document describes the design of the dependabot-insight pipeline: the respo
 
 dependabot-insight consists of three components that run sequentially as a GitHub Actions composite action:
 
+```mermaid
+flowchart TD
+    A[action.yml\nOrchestration] --> B[Steps 1-4\nResolve PR info, dependency names, setup Node.js]
+    B --> C[Step 5: impact-analysis.ts]
+    C -->|PR comment| D[Impact summary]
+    C -->|File| E[/tmp/dependabot-impact-analysis.md/]
+    E --> F[Step 6: test-recommendation.ts]
+    F -->|PR comment| G[QA report]
+
+    style F stroke-dasharray: 5 5
+    linkStyle 3 stroke-dasharray: 5 5
+    linkStyle 4 stroke-dasharray: 5 5
 ```
-action.yml (orchestration)
-    │
-    ├─ Step 1-4: Resolve PR info, dependency names, setup Node.js
-    │
-    ├─ Step 5: impact-analysis.ts
-    │              │
-    │              ├─ Input:  target repository files + environment variables
-    │              ├─ Output: PR comment (impact summary)
-    │              └─ Output: /tmp/dependabot-impact-analysis.md (for next step)
-    │
-    └─ Step 6: test-recommendation.ts (only if ANTHROPIC_API_KEY is set)
-                   │
-                   ├─ Input:  /tmp/dependabot-impact-analysis.md + environment variables
-                   └─ Output: PR comment (QA report)
-```
+
+> Step 6 (dashed) runs only when `ANTHROPIC_API_KEY` is provided.
 
 The two scripts are decoupled via a temporary file (`IMPACT_OUTPUT_PATH`). This means:
 - `impact-analysis.ts` can run independently without the AI step
@@ -84,42 +83,21 @@ Analyze the target repository's source code to determine which Next.js pages and
 
 ### Processing flow
 
-```
-1. Classify dependency
-   ├─ Read package.json → dependencies / devDependencies?
-   └─ If neither → parse package-lock.json → transitive (via which packages?)
+```mermaid
+flowchart TD
+    S1[1. Classify dependency] --> S2[2. Load path aliases\nfrom tsconfig.json]
+    S2 --> S3[3. Walk source files\nsrc/**/*.ts-x excluding tests]
+    S3 --> S4[4. Parse imports\nTypeScript AST]
+    S4 --> S5[5. Build import graph\nforward + reverse]
+    S5 --> S6[6. Find directly impacted files\nexternal imports matching updated package]
+    S6 --> S7[7. BFS from impacted files\nreverse graph → page.tsx / route.ts]
+    S7 --> CHECK{Pages found?}
+    CHECK -->|Yes| S9[9. Build comment and post]
+    CHECK -->|No| S8[8. Indirect dependency analysis\npackage-lock.json → intermediate packages → repeat 6-7]
+    S8 --> S9
 
-2. Load path aliases
-   └─ Read tsconfig.json → extract compilerOptions.paths
-
-3. Walk source files
-   └─ Recursively scan src/**/*.ts(x), excluding test files, node_modules, etc.
-
-4. Parse imports (TypeScript AST)
-   └─ For each file, extract:
-      ├─ internal imports (resolved to file paths via aliases and relative paths)
-      └─ external imports (npm package names)
-
-5. Build import graph
-   ├─ Forward graph: file → [files it imports]
-   └─ Reverse graph: file → [files that import it]
-
-6. Find directly impacted files
-   └─ Files whose external imports match the updated dependency name
-
-7. BFS from impacted files (using reverse graph)
-   └─ For each impacted file, traverse upward to find:
-      ├─ page.tsx files → Next.js pages
-      └─ route.ts files in app/api/ → API routes
-
-8. (If no pages found) Indirect dependency analysis
-   ├─ Parse package-lock.json to find which root packages depend on updated package
-   └─ Repeat steps 6-7 for each intermediate package
-
-9. Build comment and post
-   ├─ Generate Markdown with classification, impact summary, affected pages/routes
-   ├─ Post/update PR comment (upsert using HTML marker <!-- dependabot-impact-review -->)
-   └─ Save Markdown to IMPACT_OUTPUT_PATH for the next step
+    S1 -.->|package.json| S1A[dependencies / devDependencies]
+    S1 -.->|package-lock.json| S1B[transitive: via which packages?]
 ```
 
 ### Key functions
@@ -166,23 +144,16 @@ Read the impact analysis output, send it to the Claude API with a structured pro
 
 ### Processing flow
 
-```
-1. Read impact analysis Markdown from IMPACT_OUTPUT_PATH
+```mermaid
+flowchart TD
+    T1[1. Read impact analysis Markdown\nfrom IMPACT_OUTPUT_PATH] --> T2[2. Build system prompt]
+    T2 --> T3[3. Build user prompt\nimpact Markdown + output format template]
+    T3 --> T4[4. Call Claude API\nmodel: AI_MODEL, max_tokens: 4096]
+    T4 --> T5[5. Post/update PR comment\nmarker: dependabot-test-recommendation]
 
-2. Build system prompt
-   ├─ Reviewer-focused structure (package necessity → change → impact → QA plan → assumptions)
-   ├─ Language instruction (en/ja/other)
-   └─ GUI URL guidance (base-url or placeholder)
-
-3. Build user prompt
-   └─ Impact analysis Markdown + output format template
-
-4. Call Claude API
-   ├─ Model: AI_MODEL (default: claude-sonnet-4-6)
-   ├─ Max tokens: 4096
-   └─ Parse response: find first text block
-
-5. Post/update PR comment (upsert using marker <!-- dependabot-test-recommendation -->)
+    T2 -.-> T2A[Reviewer-focused structure]
+    T2 -.-> T2B[Language instruction: en/ja/other]
+    T2 -.-> T2C[GUI URL guidance: base-url or placeholder]
 ```
 
 ### Prompt design
@@ -225,40 +196,33 @@ The prompt explicitly instructs Claude to include commands like `npm ls <package
 
 ## 5. Data Flow Between Components
 
-```
-action.yml
-    │
-    │  Environment variables:
-    │  DEPENDENCY_NAMES, UPDATE_TYPE, REPOSITORY, PR_NUMBER,
-    │  GITHUB_TOKEN, PR_HEAD_SHA
-    │
-    ▼
-impact-analysis.ts
-    │
-    │  Reads from target repository:
-    │  ├─ package.json (dependency classification)
-    │  ├─ package-lock.json (transitive dependency tree)
-    │  ├─ tsconfig.json (path aliases)
-    │  └─ src/**/*.ts(x) (import declarations via AST)
-    │
-    │  Writes:
-    │  ├─ PR comment (via GitHub API, marker: <!-- dependabot-impact-review -->)
-    │  └─ /tmp/dependabot-impact-analysis.md (Markdown file)
-    │
-    ▼
-test-recommendation.ts
-    │
-    │  Reads:
-    │  └─ /tmp/dependabot-impact-analysis.md (output from previous step)
-    │
-    │  Additional environment variables:
-    │  ANTHROPIC_API_KEY, AI_MODEL, AI_LANGUAGE, BASE_URL
-    │
-    │  Calls:
-    │  └─ Claude API (POST /v1/messages)
-    │
-    │  Writes:
-    │  └─ PR comment (via GitHub API, marker: <!-- dependabot-test-recommendation -->)
+```mermaid
+flowchart TD
+    subgraph action.yml
+        ENV1[Environment variables:\nDEPENDENCY_NAMES, UPDATE_TYPE,\nREPOSITORY, PR_NUMBER,\nGITHUB_TOKEN, PR_HEAD_SHA]
+    end
+
+    subgraph impact-analysis.ts
+        direction TB
+        IA_READ[Reads from target repository:\npackage.json, package-lock.json,\ntsconfig.json, src/**/*.ts-x]
+        IA_WRITE_COMMENT[Writes: PR comment\nmarker: dependabot-impact-review]
+        IA_WRITE_FILE[Writes: /tmp/dependabot-impact-analysis.md]
+    end
+
+    subgraph test-recommendation.ts
+        direction TB
+        TR_READ[Reads:\n/tmp/dependabot-impact-analysis.md]
+        TR_ENV[Additional env vars:\nANTHROPIC_API_KEY, AI_MODEL,\nAI_LANGUAGE, BASE_URL]
+        TR_CALL[Calls: Claude API\nPOST /v1/messages]
+        TR_WRITE[Writes: PR comment\nmarker: dependabot-test-recommendation]
+    end
+
+    ENV1 --> IA_READ
+    IA_READ --> IA_WRITE_COMMENT
+    IA_READ --> IA_WRITE_FILE
+    IA_WRITE_FILE --> TR_READ
+    TR_READ --> TR_CALL
+    TR_CALL --> TR_WRITE
 ```
 
 ### Interface contract

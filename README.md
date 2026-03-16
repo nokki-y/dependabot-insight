@@ -154,52 +154,21 @@ Post `/dep-insight` as a comment on any Dependabot PR to trigger the analysis ma
 
 ## How it works
 
-```
-Dependabot PR created
-        │
-        ▼
-┌─────────────────────────┐
-│  Classify dependency    │  package.json → dependencies / devDependencies / transitive
-└───────────┬─────────────┘
-            │
-            ▼
-┌─────────────────────────┐
-│  Parse imports (AST)    │  TypeScript AST → import/require/export declarations
-└───────────┬─────────────┘
-            │
-            ▼
-┌─────────────────────────┐
-│  Build import graph     │  file A imports B, B imports C → directed graph
-└───────────┬─────────────┘
-            │
-            ▼
-┌─────────────────────────┐
-│  BFS to pages/routes    │  Reverse-traverse graph → find reachable page.tsx / route.ts
-└───────────┬─────────────┘
-            │
-     ┌──────┴──────┐
-     │ No pages?   │
-     └──────┬──────┘
-            │ Yes
-            ▼
-┌─────────────────────────┐
-│  Indirect dep analysis  │  package-lock.json → which root packages depend on updated pkg?
-└───────────┬─────────────┘
-            │
-            ▼
-┌─────────────────────────┐
-│  Post impact comment    │  → PR comment with impact summary
-└───────────┬─────────────┘
-            │
-            ▼
-┌─────────────────────────┐
-│  AI QA report           │  Claude API → risk assessment + test plan
-└───────────┬─────────────┘
-            │
-            ▼
-┌─────────────────────────┐
-│  Post QA comment        │  → PR comment with QA report
-└─────────────────────────┘
+```mermaid
+flowchart TD
+    START[Dependabot PR created] --> S1[Classify dependency\npackage.json → dependencies / devDependencies / transitive]
+    S1 --> S2[Parse imports via AST\nimport/require/export declarations]
+    S2 --> S3[Build import graph\nfile A → B → C as directed graph]
+    S3 --> S4[BFS to pages/routes\nreverse-traverse → find reachable page.tsx / route.ts]
+    S4 --> CHECK{Pages found?}
+    CHECK -->|No| S5[Indirect dep analysis\npackage-lock.json → which root packages depend on updated pkg?]
+    CHECK -->|Yes| S6[Post impact comment\nPR comment with impact summary]
+    S5 --> S6
+    S6 --> S7[AI QA report\nClaude API → test plan with verification steps]
+    S7 --> S8[Post QA comment\nPR comment with QA report]
+
+    style S7 stroke-dasharray: 5 5
+    style S8 stroke-dasharray: 5 5
 ```
 
 ## Prerequisites
