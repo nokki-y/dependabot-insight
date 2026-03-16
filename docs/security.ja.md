@@ -183,4 +183,4 @@ dependabot-insight リポジトリにコントリビュートする開発者が�
 GitHub Actions の仕組みとこの Action の実装の2層で保護されています。
 
 - **`pull_request` イベント**: fork PR には secrets が渡されません（GitHub Actions の仕様）。fork PR から `GITHUB_TOKEN` や `ANTHROPIC_API_KEY` にアクセスすることはできません
-- **`issue_comment` イベント**: secrets が渡るため、この Action は PR 作成者が `dependabot[bot]` であることを検証し、それ以外の PR では実行を拒否します。加えて、トリガーコマンド（`/dep-insight`）の実行権限を `MEMBER` / `OWNER` / `COLLABORATOR` に限定することを、利用者のワークフロー側で設定可能です（README の設定例を参照）
+- **`issue_comment` イベント**: secrets が渡るため、この Action は PR 作成者が `dependabot[bot]` であることを GitHub API 経由で検証し、それ以外の PR では実行を拒否します。`dependabot[bot]` は GitHub が内部管理する bot アカウントであり、一般ユーザーが `[bot]` サフィックス付きのアカウントを作成することはできません。GitHub API の `author.login` は GitHub が認証した値を返すため、なりすましは不可能です。加えて、トリガーコマンド（`/dep-insight`）の実行権限を `MEMBER` / `OWNER` / `COLLABORATOR` に限定することを、利用者のワークフロー側で設定可能です（README の設定例を参照）
