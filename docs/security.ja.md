@@ -174,4 +174,14 @@ dependabot-insight リポジトリにコントリビュートする開発者が�
 |---------|--------|
 | Claude API にデータを送信したくない | `anthropic-api-key` を省略 — GitHub 内で完結する静的解析のみ使用 |
 | PRコメントにファイルパスを表示したくない | 現時点では未対応。代わりに `DRY_RUN=true` でローカル実行を検討 |
-| fork PR からの攻撃が心配 | Action は実行前に PR 作成者が `dependabot[bot]` であることを検証。不明な作成者からの fork PR は拒否 |
+
+### fork PR からの攻撃に対する保護
+
+fork PR を経由して secrets を窃取する攻撃に対しては、GitHub Actions の仕組みとこの Action の実装の2層で保護されています。
+
+**GitHub Actions の仕組みによる保護:**
+- `pull_request` イベント: fork PR には secrets が渡されない（GitHub Actions の仕様）。そのため、fork PR から `GITHUB_TOKEN` や `ANTHROPIC_API_KEY` にアクセスすることはできない
+
+**この Action の実装による保護:**
+- `issue_comment` イベント: secrets が渡るため、PR 作成者が `dependabot[bot]` であることを検証し、それ以外の PR では実行を拒否する
+- `issue_comment` のトリガーコマンド（`/dep-insight`）の実行権限を `MEMBER` / `OWNER` / `COLLABORATOR` に限定することを、利用者のワークフロー側で設定可能（READMEの設定例を参照）

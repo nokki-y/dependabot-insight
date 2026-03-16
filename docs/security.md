@@ -176,4 +176,14 @@ The same information listed above is sent to Anthropic's API. Per [Anthropic's A
 |---------|------------|
 | Don't want any data sent to Claude API | Omit `anthropic-api-key` — only static analysis (within GitHub) is used |
 | Don't want file paths in PR comments | Not currently supported. Consider running with `DRY_RUN=true` locally instead |
-| Worried about fork PR attacks | The action verifies the PR author is `dependabot[bot]` before running. Fork PRs from unknown authors are rejected |
+
+### Protection against fork PR attacks
+
+Fork PRs attempting to exfiltrate secrets are protected by two layers: GitHub Actions' built-in behavior and this Action's implementation.
+
+**GitHub Actions built-in protection:**
+- `pull_request` event: Secrets are not available to fork PRs (GitHub Actions behavior by design). Fork PRs cannot access `GITHUB_TOKEN` or `ANTHROPIC_API_KEY`.
+
+**This Action's implementation:**
+- `issue_comment` event: Secrets are available, so the Action verifies the PR author is `dependabot[bot]` and refuses to run on PRs from other authors.
+- The trigger command (`/dep-insight`) can be restricted to `MEMBER` / `OWNER` / `COLLABORATOR` via `author_association` checks in the user's workflow (see the setup example in README).
