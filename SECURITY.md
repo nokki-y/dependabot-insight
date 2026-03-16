@@ -19,14 +19,6 @@ If you discover a security vulnerability in dependabot-insight, please report it
 - Potential impact
 - Suggested fix (if any)
 
-### Response timeline
-
-| Stage | Timeline |
-|-------|----------|
-| Acknowledgment | Within 3 business days |
-| Initial assessment | Within 7 business days |
-| Fix release | Within 30 days for critical issues |
-
 ### Scope
 
 The following are in scope for security reports:
