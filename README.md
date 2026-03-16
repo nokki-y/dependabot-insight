@@ -170,16 +170,19 @@ Dependabot PR created
 └─────────────────────────┘
 ```
 
-## Supported frameworks
+## Prerequisites
 
-Currently supports **Next.js App Router** projects:
+- **npm** — Parses `package-lock.json` for transitive dependency analysis. yarn and pnpm are not yet supported.
+- **Next.js App Router** — Traces impact to `page.tsx` / `route.ts` files using App Router conventions.
+
+### Next.js App Router support
 
 - Detects `page.tsx` / `page.ts` as pages
-- Detects `route.ts` / `route.ts` in `app/api/` as API routes
+- Detects `route.ts` in `app/api/` as API routes
 - Resolves `tsconfig.json` path aliases
 - Handles Route Groups `(group)`, Dynamic Segments `[id]`, Catch-all `[...slug]`
 
-> Support for other frameworks (Pages Router, Remix, SvelteKit, etc.) is planned for future releases.
+> Support for other package managers (yarn, pnpm) and frameworks (Pages Router, Remix, SvelteKit, etc.) is planned for future releases.
 
 ## Development
 

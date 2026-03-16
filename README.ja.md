@@ -171,16 +171,19 @@ Dependabot PR 作成
 └──────────────────────────────┘
 ```
 
-## 対応フレームワーク
+## 前提条件
 
-現在 **Next.js App Router** プロジェクトに対応しています:
+- **npm** — 推移的依存関係の解析に `package-lock.json` を使用します。yarn・pnpm には未対応です。
+- **Next.js App Router** — App Router の規約に基づき `page.tsx` / `route.ts` への影響到達を追跡します。
+
+### Next.js App Router 対応状況
 
 - `page.tsx` / `page.ts` をページとして検出
 - `app/api/` 配下の `route.ts` を API ルートとして検出
 - `tsconfig.json` のパスエイリアスを解決
 - Route Groups `(group)`、Dynamic Segments `[id]`、Catch-all `[...slug]` に対応
 
-> 他のフレームワーク（Pages Router、Remix、SvelteKit 等）は今後のリリースで対応予定です。
+> 他のパッケージマネージャー（yarn、pnpm）やフレームワーク（Pages Router、Remix、SvelteKit 等）は今後のリリースで対応予定です。
 
 ## 開発
 
