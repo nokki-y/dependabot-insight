@@ -119,6 +119,18 @@ jobs:
           ai-language: ja
 ```
 
+### 全オプション指定
+
+```yaml
+      - uses: nokki-y/dependabot-insight@v1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
+          ai-model: 'claude-sonnet-4-6'          # Claude モデル（デフォルト: claude-sonnet-4-20250514）
+          ai-language: 'ja'                        # QA レポートの言語（デフォルト: en）
+          base-url: 'https://my-app-pr-123.vercel.app'  # GUI 確認用 URL
+```
+
 ### コメントでトリガー
 
 Dependabot PR に `/dep-insight` とコメントすると、手動で解析を実行できます。

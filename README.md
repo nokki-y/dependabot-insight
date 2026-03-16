@@ -118,6 +118,18 @@ jobs:
           anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
 ```
 
+### With all options
+
+```yaml
+      - uses: nokki-y/dependabot-insight@v1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
+          ai-model: 'claude-sonnet-4-6'          # Claude model (default: claude-sonnet-4-20250514)
+          ai-language: 'ja'                        # QA report language (default: en)
+          base-url: 'https://my-app-pr-123.vercel.app'  # For GUI verification URLs
+```
+
 ### Trigger via comment
 
 Post `/dep-insight` as a comment on any Dependabot PR to trigger the analysis manually.
