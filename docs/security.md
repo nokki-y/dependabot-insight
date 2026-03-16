@@ -22,7 +22,8 @@ This document describes the security architecture of dependabot-insight — what
 │  - src/**/*.ts(x)     ... collect import/export          │
 │                          declarations only               │
 │                          (full file read for AST parsing  │
-│                           but NOT sent externally)        │
+│                           but NOT sent to GitHub API      │
+│                           or Claude API)                  │
 └─────────────────────────┬────────────────────────────────┘
                           │
                           │ Static analysis (runs in GitHub Actions runner)
@@ -37,7 +38,8 @@ This document describes the security architecture of dependabot-insight — what
              │  - file counts           │
              │                          │
              │  * Source code body is    │
-             │    NOT extracted or sent  │
+             │    NOT sent to GitHub API │
+             │    or Claude API          │
              └────────────┬─────────────┘
                           │
                ┌──────────┼──────────┐
