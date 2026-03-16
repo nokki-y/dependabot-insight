@@ -2,6 +2,8 @@
 
 Analyze the impact scope of Dependabot PRs with static analysis and generate AI-powered QA reports.
 
+> English | [日本語](./README.ja.md)
+
 ## What it does
 
 When Dependabot creates a PR, this action automatically:
