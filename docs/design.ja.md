@@ -85,20 +85,29 @@ composite action の唯一のデメリットは `npm ci` の起動オーバー�
 
 ```mermaid
 flowchart TD
-    S1[1. 依存パッケージの分類] --> S2[2. パスエイリアスの読み込み<br>tsconfig.json]
-    S2 --> S3[3. ソースファイルの走査<br>src/**/*.ts-x テスト等は除外]
-    S3 --> S4[4. importの解析<br>TypeScript AST]
-    S4 --> S5[5. importグラフの構築<br>順方向 + 逆方向]
-    S5 --> S6[6. 直接影響ファイルの特定<br>外部importが更新対象パッケージに一致]
-    S6 --> S7[7. 影響ファイルからBFS<br>逆方向グラフ → page.tsx / route.ts]
+    S1[1. 依存パッケージの分類] --> S2[2. パスエイリアスの読み込み]
+    S2 --> S3[3. ソースファイルの走査]
+    S3 --> S4[4. importの解析]
+    S4 --> S5[5. importグラフの構築]
+    S5 --> S6[6. 直接影響ファイルの特定]
+    S6 --> S7[7. BFSでページ到達性を探索]
     S7 --> CHECK{ページが見つかった？}
     CHECK -->|はい| S9[9. コメントの生成と投稿]
-    CHECK -->|いいえ| S8[8. 他パッケージ経由の影響解析<br>package-lock.json → 中間パッケージ → 6-7を繰り返す]
+    CHECK -->|いいえ| S8[8. 他パッケージ経由の影響解析]
     S8 --> S9
-
-    S1 -.->|package.json| S1A[dependencies / devDependencies]
-    S1 -.->|package-lock.json| S1B[transitive: どのパッケージ経由か？]
 ```
+
+| ステップ | 説明 |
+|---------|------|
+| 1. 依存パッケージの分類 | `package.json` を読み取り → dependencies / devDependencies。どちらでもない → `package-lock.json` を解析 → transitive（どのパッケージ経由か） |
+| 2. パスエイリアスの読み込み | `tsconfig.json` → `compilerOptions.paths` を抽出 |
+| 3. ソースファイルの走査 | `src/**/*.ts(x)` を再帰スキャン（テストファイル、`node_modules` 等は除外） |
+| 4. importの解析 | TypeScript AST → 各ファイルの import/require/export-from 宣言を抽出 |
+| 5. importグラフの構築 | 順方向グラフ（ファイル → importしているファイル群）+ 逆方向グラフ（ファイル → importされているファイル群） |
+| 6. 直接影響ファイルの特定 | 外部 import が更新対象パッケージ名に一致するファイル |
+| 7. BFSでページ到達性を探索 | ファイルごとに逆方向グラフ上で BFS → 到達可能な `page.tsx` / `route.ts` を発見 |
+| 8. 他パッケージ経由の影響解析 | `package-lock.json` を解析して更新対象に依存するルートパッケージを特定し、ステップ 6-7 を繰り返す |
+| 9. コメントの生成と投稿 | Markdown 生成、PR コメントをアップサート、`IMPACT_OUTPUT_PATH` に保存 |
 
 ### 主要な関数
 
@@ -146,15 +155,19 @@ TypeScript コンパイラ API（`ts.createSourceFile`）は、動的 `import()`
 
 ```mermaid
 flowchart TD
-    T1[1. 影響解析Markdownを読み取り<br>IMPACT_OUTPUT_PATHから] --> T2[2. システムプロンプトを構築]
-    T2 --> T3[3. ユーザープロンプトを構築<br>影響解析Markdown + 出力フォーマットテンプレート]
-    T3 --> T4[4. Claude API呼び出し<br>モデル: AI_MODEL, max_tokens: 4096]
-    T4 --> T5[5. PRコメントを投稿/更新<br>マーカー: dependabot-test-recommendation]
-
-    T2 -.-> T2A[レビュワー視点の構造]
-    T2 -.-> T2B[言語指示: en/ja/その他]
-    T2 -.-> T2C[GUI URLガイダンス: base-urlまたはプレースホルダー]
+    T1[1. 影響解析を読み取り] --> T2[2. システムプロンプトを構築]
+    T2 --> T3[3. ユーザープロンプトを構築]
+    T3 --> T4[4. Claude API呼び出し]
+    T4 --> T5[5. PRコメントを投稿/更新]
 ```
+
+| ステップ | 説明 |
+|---------|------|
+| 1. 影響解析を読み取り | `IMPACT_OUTPUT_PATH` から Markdown を読み取り |
+| 2. システムプロンプトを構築 | レビュワー視点の構造 + 言語指示（en/ja/その他）+ GUI URL ガイダンス（base-url またはプレースホルダー） |
+| 3. ユーザープロンプトを構築 | 影響解析 Markdown + 出力フォーマットテンプレート |
+| 4. Claude API呼び出し | モデル: `AI_MODEL`（デフォルト: `claude-sonnet-4-6`）、max_tokens: 4096 |
+| 5. PRコメントを投稿/更新 | マーカー `<!-- dependabot-test-recommendation -->` によるアップサート |
 
 ### プロンプト設計
 
@@ -199,31 +212,34 @@ flowchart TD
 ```mermaid
 flowchart TD
     subgraph action.yml
-        ENV1[環境変数:<br>DEPENDENCY_NAMES, UPDATE_TYPE,<br>REPOSITORY, PR_NUMBER,<br>GITHUB_TOKEN, PR_HEAD_SHA]
+        ENV[環境変数]
     end
 
     subgraph impact-analysis.ts
-        direction TB
-        IA_READ[対象リポジトリから読み取り:<br>package.json, package-lock.json,<br>tsconfig.json, src/**/*.ts-x]
-        IA_WRITE_COMMENT[書き込み: PRコメント<br>マーカー: dependabot-impact-review]
-        IA_WRITE_FILE[書き込み: /tmp/dependabot-impact-analysis.md]
+        IA_READ[対象リポジトリを読み取り]
+        IA_COMMENT[PRコメントを投稿]
+        IA_FILE[一時ファイルに書き込み]
     end
 
     subgraph test-recommendation.ts
-        direction TB
-        TR_READ[読み取り:<br>/tmp/dependabot-impact-analysis.md]
-        TR_ENV[追加の環境変数:<br>ANTHROPIC_API_KEY, AI_MODEL,<br>AI_LANGUAGE, BASE_URL]
-        TR_CALL[呼び出し: Claude API<br>POST /v1/messages]
-        TR_WRITE[書き込み: PRコメント<br>マーカー: dependabot-test-recommendation]
+        TR_READ[一時ファイルを読み取り]
+        TR_API[Claude API呼び出し]
+        TR_COMMENT[PRコメントを投稿]
     end
 
-    ENV1 --> IA_READ
-    IA_READ --> IA_WRITE_COMMENT
-    IA_READ --> IA_WRITE_FILE
-    IA_WRITE_FILE --> TR_READ
-    TR_READ --> TR_CALL
-    TR_CALL --> TR_WRITE
+    ENV --> IA_READ
+    IA_READ --> IA_COMMENT
+    IA_READ --> IA_FILE
+    IA_FILE --> TR_READ
+    TR_READ --> TR_API
+    TR_API --> TR_COMMENT
 ```
+
+| コンポーネント | 読み取り | 書き込み |
+|--------------|---------|---------|
+| **action.yml** | — | 環境変数: `DEPENDENCY_NAMES`, `UPDATE_TYPE`, `REPOSITORY`, `PR_NUMBER`, `GITHUB_TOKEN`, `PR_HEAD_SHA` |
+| **impact-analysis.ts** | 対象リポジトリ: `package.json`, `package-lock.json`, `tsconfig.json`, `src/**/*.ts(x)` | PRコメント（マーカー: `dependabot-impact-review`）+ `/tmp/dependabot-impact-analysis.md` |
+| **test-recommendation.ts** | `/tmp/dependabot-impact-analysis.md` + 環境変数: `ANTHROPIC_API_KEY`, `AI_MODEL`, `AI_LANGUAGE`, `BASE_URL` | Claude API（`POST /v1/messages`）→ PRコメント（マーカー: `dependabot-test-recommendation`） |
 
 ### インターフェース契約
 

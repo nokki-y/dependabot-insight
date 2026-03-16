@@ -85,20 +85,29 @@ Analyze the target repository's source code to determine which Next.js pages and
 
 ```mermaid
 flowchart TD
-    S1[1. Classify dependency] --> S2[2. Load path aliases<br>from tsconfig.json]
-    S2 --> S3[3. Walk source files<br>src/**/*.ts-x excluding tests]
-    S3 --> S4[4. Parse imports<br>TypeScript AST]
-    S4 --> S5[5. Build import graph<br>forward + reverse]
-    S5 --> S6[6. Find directly impacted files<br>external imports matching updated package]
-    S6 --> S7[7. BFS from impacted files<br>reverse graph → page.tsx / route.ts]
+    S1[1. Classify dependency] --> S2[2. Load path aliases]
+    S2 --> S3[3. Walk source files]
+    S3 --> S4[4. Parse imports]
+    S4 --> S5[5. Build import graph]
+    S5 --> S6[6. Find impacted files]
+    S6 --> S7[7. BFS to pages/routes]
     S7 --> CHECK{Pages found?}
     CHECK -->|Yes| S9[9. Build comment and post]
-    CHECK -->|No| S8[8. Indirect dependency analysis<br>package-lock.json → intermediate packages → repeat 6-7]
+    CHECK -->|No| S8[8. Indirect dep analysis]
     S8 --> S9
-
-    S1 -.->|package.json| S1A[dependencies / devDependencies]
-    S1 -.->|package-lock.json| S1B[transitive: via which packages?]
 ```
+
+| Step | Description |
+|------|-------------|
+| 1. Classify dependency | Read `package.json` → dependencies / devDependencies. If neither → parse `package-lock.json` → transitive (via which packages?) |
+| 2. Load path aliases | Read `tsconfig.json` → extract `compilerOptions.paths` |
+| 3. Walk source files | Recursively scan `src/**/*.ts(x)`, excluding test files, `node_modules`, etc. |
+| 4. Parse imports | TypeScript AST → extract import/require/export-from declarations per file |
+| 5. Build import graph | Forward graph (file → imported files) + reverse graph (file → files that import it) |
+| 6. Find impacted files | Files whose external imports match the updated dependency name |
+| 7. BFS to pages/routes | Per-file BFS on reverse graph → find reachable `page.tsx` / `route.ts` |
+| 8. Indirect dep analysis | Parse `package-lock.json` to find root packages that depend on the updated package, then repeat steps 6-7 for each |
+| 9. Build comment and post | Generate Markdown, upsert PR comment, save to `IMPACT_OUTPUT_PATH` |
 
 ### Key functions
 
@@ -146,15 +155,19 @@ Read the impact analysis output, send it to the Claude API with a structured pro
 
 ```mermaid
 flowchart TD
-    T1[1. Read impact analysis Markdown<br>from IMPACT_OUTPUT_PATH] --> T2[2. Build system prompt]
-    T2 --> T3[3. Build user prompt<br>impact Markdown + output format template]
-    T3 --> T4[4. Call Claude API<br>model: AI_MODEL, max_tokens: 4096]
-    T4 --> T5[5. Post/update PR comment<br>marker: dependabot-test-recommendation]
-
-    T2 -.-> T2A[Reviewer-focused structure]
-    T2 -.-> T2B[Language instruction: en/ja/other]
-    T2 -.-> T2C[GUI URL guidance: base-url or placeholder]
+    T1[1. Read impact analysis] --> T2[2. Build system prompt]
+    T2 --> T3[3. Build user prompt]
+    T3 --> T4[4. Call Claude API]
+    T4 --> T5[5. Post/update PR comment]
 ```
+
+| Step | Description |
+|------|-------------|
+| 1. Read impact analysis | Read Markdown from `IMPACT_OUTPUT_PATH` |
+| 2. Build system prompt | Reviewer-focused structure + language instruction (en/ja/other) + GUI URL guidance (base-url or placeholder) |
+| 3. Build user prompt | Impact analysis Markdown + output format template |
+| 4. Call Claude API | Model: `AI_MODEL` (default: `claude-sonnet-4-6`), max_tokens: 4096 |
+| 5. Post/update PR comment | Upsert using marker `<!-- dependabot-test-recommendation -->` |
 
 ### Prompt design
 
@@ -199,31 +212,34 @@ The prompt explicitly instructs Claude to include commands like `npm ls <package
 ```mermaid
 flowchart TD
     subgraph action.yml
-        ENV1[Environment variables:<br>DEPENDENCY_NAMES, UPDATE_TYPE,<br>REPOSITORY, PR_NUMBER,<br>GITHUB_TOKEN, PR_HEAD_SHA]
+        ENV[Environment variables]
     end
 
     subgraph impact-analysis.ts
-        direction TB
-        IA_READ[Reads from target repository:<br>package.json, package-lock.json,<br>tsconfig.json, src/**/*.ts-x]
-        IA_WRITE_COMMENT[Writes: PR comment<br>marker: dependabot-impact-review]
-        IA_WRITE_FILE[Writes: /tmp/dependabot-impact-analysis.md]
+        IA_READ[Read target repo files]
+        IA_COMMENT[Post PR comment]
+        IA_FILE[Write temp file]
     end
 
     subgraph test-recommendation.ts
-        direction TB
-        TR_READ[Reads:<br>/tmp/dependabot-impact-analysis.md]
-        TR_ENV[Additional env vars:<br>ANTHROPIC_API_KEY, AI_MODEL,<br>AI_LANGUAGE, BASE_URL]
-        TR_CALL[Calls: Claude API<br>POST /v1/messages]
-        TR_WRITE[Writes: PR comment<br>marker: dependabot-test-recommendation]
+        TR_READ[Read temp file]
+        TR_API[Call Claude API]
+        TR_COMMENT[Post PR comment]
     end
 
-    ENV1 --> IA_READ
-    IA_READ --> IA_WRITE_COMMENT
-    IA_READ --> IA_WRITE_FILE
-    IA_WRITE_FILE --> TR_READ
-    TR_READ --> TR_CALL
-    TR_CALL --> TR_WRITE
+    ENV --> IA_READ
+    IA_READ --> IA_COMMENT
+    IA_READ --> IA_FILE
+    IA_FILE --> TR_READ
+    TR_READ --> TR_API
+    TR_API --> TR_COMMENT
 ```
+
+| Component | Reads | Writes |
+|-----------|-------|--------|
+| **action.yml** | — | Environment variables: `DEPENDENCY_NAMES`, `UPDATE_TYPE`, `REPOSITORY`, `PR_NUMBER`, `GITHUB_TOKEN`, `PR_HEAD_SHA` |
+| **impact-analysis.ts** | Target repo: `package.json`, `package-lock.json`, `tsconfig.json`, `src/**/*.ts(x)` | PR comment (marker: `dependabot-impact-review`) + `/tmp/dependabot-impact-analysis.md` |
+| **test-recommendation.ts** | `/tmp/dependabot-impact-analysis.md` + env vars: `ANTHROPIC_API_KEY`, `AI_MODEL`, `AI_LANGUAGE`, `BASE_URL` | Claude API (`POST /v1/messages`) → PR comment (marker: `dependabot-test-recommendation`) |
 
 ### Interface contract
 

@@ -157,20 +157,31 @@ Dependabot PR に `/dep-insight` とコメントすると、手動で解析を�
 
 ```mermaid
 flowchart TD
-    START[Dependabot PR 作成] --> S1[パッケージの依存区分を判定<br>package.json → dependencies / devDependencies / transitive]
-    S1 --> S2[importをAST解析<br>import/require/export宣言を収集]
-    S2 --> S3[importグラフを構築<br>ファイル A → B → C を有向グラフ化]
-    S3 --> S4[BFSでページ到達性を探索<br>逆方向に探索 → page.tsx / route.ts に到達するか判定]
+    START[Dependabot PR 作成] --> S1[依存区分を判定]
+    S1 --> S2[importをAST解析]
+    S2 --> S3[importグラフを構築]
+    S3 --> S4[BFSでページ到達性を探索]
     S4 --> CHECK{ページが見つかった？}
-    CHECK -->|いいえ| S5[他パッケージ経由の影響を分析<br>package-lock.json → どのパッケージが更新対象に依存しているか]
-    CHECK -->|はい| S6[影響解析コメントを投稿<br>PRコメント 影響サマリー]
+    CHECK -->|いいえ| S5[他パッケージ経由の影響を分析]
+    CHECK -->|はい| S6[影響解析コメントを投稿]
     S5 --> S6
-    S6 --> S7[AI品質保証レポートを生成<br>Claude API → テスト計画と確認手順]
-    S7 --> S8[QAレポートコメントを投稿<br>PRコメント 品質保証レポート]
+    S6 --> S7[AI品質保証レポートを生成]
+    S7 --> S8[QAレポートコメントを投稿]
 
     style S7 stroke-dasharray: 5 5
     style S8 stroke-dasharray: 5 5
 ```
+
+| ステップ | 説明 |
+|---------|------|
+| 依存区分を判定 | `package.json` を読み取り → dependencies / devDependencies / transitive |
+| importをAST解析 | TypeScript AST → import/require/export 宣言を収集 |
+| importグラフを構築 | ファイル A → B → C の依存関係を有向グラフ化 |
+| BFSでページ到達性を探索 | 逆方向に探索 → `page.tsx` / `route.ts` に到達するか判定 |
+| 他パッケージ経由の影響を分析 | `package-lock.json` を解析 → どのパッケージが更新対象に依存しているか |
+| 影響解析コメントを投稿 | PR コメントとして影響サマリーを投稿 |
+| AI品質保証レポートを生成（破線） | Claude API → テスト計画と確認手順。`anthropic-api-key` 設定時のみ実行 |
+| QAレポートコメントを投稿（破線） | PR コメントとして品質保証レポートを投稿 |
 
 ## 前提条件
 
