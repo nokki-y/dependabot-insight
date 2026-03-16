@@ -9,20 +9,33 @@
 dependabot-insight は、GitHub Actions の composite action として順番に実行される3つのコンポーネントで構成されています:
 
 ```mermaid
-flowchart TD
-    A[action.yml<br>オーケストレーション] --> B[ステップ 1-4<br>PR情報の解決、依存パッケージ名の取得、Node.jsセットアップ]
-    B --> C[ステップ 5: impact-analysis.ts]
-    C -->|PRコメント| D[影響サマリー]
-    C -->|ファイル| E[/tmp/dependabot-impact-analysis.md/]
-    E --> F[ステップ 6: test-recommendation.ts]
-    F -->|PRコメント| G[QAレポート]
+sequenceDiagram
+    participant GH as GitHub Actions
+    participant AY as action.yml
+    participant IA as impact-analysis.ts
+    participant PR as PRコメント
+    participant TMP as 一時ファイル
+    participant TR as test-recommendation.ts
+    participant CA as Claude API
 
-    style F stroke-dasharray: 5 5
-    linkStyle 3 stroke-dasharray: 5 5
-    linkStyle 4 stroke-dasharray: 5 5
+    GH->>AY: トリガー（pull_request / issue_comment）
+    AY->>AY: シークレットのマスク
+    AY->>AY: PR情報 + パッケージ名の解決
+    AY->>AY: Node.jsセットアップ + npm ci
+
+    AY->>IA: 実行
+    IA->>IA: 対象リポジトリのファイルを読み取り
+    IA->>PR: 影響サマリーを投稿
+    IA->>TMP: 解析結果Markdownを書き込み
+
+    opt ANTHROPIC_API_KEY 設定時
+        AY->>TR: 実行
+        TR->>TMP: 解析結果Markdownを読み取り
+        TR->>CA: 影響サマリー + プロンプトを送信
+        CA-->>TR: QAレポート
+        TR->>PR: QAレポートを投稿
+    end
 ```
-
-> ステップ 6（破線）は `ANTHROPIC_API_KEY` 設定時のみ実行されます。
 
 2つのスクリプトは一時ファイル（`IMPACT_OUTPUT_PATH`）を介してデカップリングされています。これにより:
 - `impact-analysis.ts` は AI ステップなしで単独実行可能
@@ -154,19 +167,23 @@ TypeScript コンパイラ API（`ts.createSourceFile`）は、動的 `import()`
 ### 処理フロー
 
 ```mermaid
-flowchart TD
-    T1[1. 影響解析を読み取り] --> T2[2. システムプロンプトを構築]
-    T2 --> T3[3. ユーザープロンプトを構築]
-    T3 --> T4[4. Claude API呼び出し]
-    T4 --> T5[5. PRコメントを投稿/更新]
-```
+sequenceDiagram
+    participant TR as test-recommendation.ts
+    participant TMP as 一時ファイル
+    participant CA as Claude API
+    participant PR as PRコメント
 
-| ステップ | 説明 |
-|---------|------|
-| 1. 影響解析を読み取り | `IMPACT_OUTPUT_PATH` から Markdown を読み取り |
-| 2. システムプロンプトを構築 | レビュワー視点の構造 + 言語指示（en/ja/その他）+ GUI URL ガイダンス（base-url またはプレースホルダー） |
-| 3. ユーザープロンプトを構築 | 影響解析 Markdown + 出力フォーマットテンプレート |
-| 4. Claude API呼び出し | モデル: `AI_MODEL`（デフォルト: `claude-sonnet-4-6`）、max_tokens: 4096 |
+    TR->>TMP: 影響解析Markdownを読み取り
+    TR->>TR: システムプロンプトを構築
+    Note right of TR: レビュワー視点の構造<br>+ 言語指示（en/ja）<br>+ GUI URLガイダンス
+    TR->>TR: ユーザープロンプトを構築
+    Note right of TR: 影響解析Markdown<br>+ 出力フォーマットテンプレート
+    TR->>CA: POST /v1/messages
+    Note right of CA: モデル: AI_MODEL<br>max_tokens: 4096
+    CA-->>TR: QAレポートテキスト
+    TR->>PR: PRコメントをアップサート
+    Note right of PR: マーカー:<br>dependabot-test-recommendation
+```
 | 5. PRコメントを投稿/更新 | マーカー `<!-- dependabot-test-recommendation -->` によるアップサート |
 
 ### プロンプト設計
@@ -209,35 +226,11 @@ flowchart TD
 
 ## 5. コンポーネント間のデータフロー
 
-```mermaid
-flowchart TD
-    subgraph action.yml
-        ENV[環境変数]
-    end
-
-    subgraph impact-analysis.ts
-        IA_READ[対象リポジトリを読み取り]
-        IA_COMMENT[PRコメントを投稿]
-        IA_FILE[一時ファイルに書き込み]
-    end
-
-    subgraph test-recommendation.ts
-        TR_READ[一時ファイルを読み取り]
-        TR_API[Claude API呼び出し]
-        TR_COMMENT[PRコメントを投稿]
-    end
-
-    ENV --> IA_READ
-    IA_READ --> IA_COMMENT
-    IA_READ --> IA_FILE
-    IA_FILE --> TR_READ
-    TR_READ --> TR_API
-    TR_API --> TR_COMMENT
-```
+[セクション1](#1-パイプライン概要) のシーケンス図が完全なデータフローを示しています。以下のテーブルは各コンポーネントの読み取り・書き込みをまとめたものです:
 
 | コンポーネント | 読み取り | 書き込み |
 |--------------|---------|---------|
-| **action.yml** | — | 環境変数: `DEPENDENCY_NAMES`, `UPDATE_TYPE`, `REPOSITORY`, `PR_NUMBER`, `GITHUB_TOKEN`, `PR_HEAD_SHA` |
+| **action.yml** | GitHub イベントコンテキスト | 環境変数: `DEPENDENCY_NAMES`, `UPDATE_TYPE`, `REPOSITORY`, `PR_NUMBER`, `GITHUB_TOKEN`, `PR_HEAD_SHA` |
 | **impact-analysis.ts** | 対象リポジトリ: `package.json`, `package-lock.json`, `tsconfig.json`, `src/**/*.ts(x)` | PRコメント（マーカー: `dependabot-impact-review`）+ `/tmp/dependabot-impact-analysis.md` |
 | **test-recommendation.ts** | `/tmp/dependabot-impact-analysis.md` + 環境変数: `ANTHROPIC_API_KEY`, `AI_MODEL`, `AI_LANGUAGE`, `BASE_URL` | Claude API（`POST /v1/messages`）→ PRコメント（マーカー: `dependabot-test-recommendation`） |
 

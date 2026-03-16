@@ -9,20 +9,33 @@ This document describes the design of the dependabot-insight pipeline: the respo
 dependabot-insight consists of three components that run sequentially as a GitHub Actions composite action:
 
 ```mermaid
-flowchart TD
-    A[action.yml<br>Orchestration] --> B[Steps 1-4<br>Resolve PR info, dependency names, setup Node.js]
-    B --> C[Step 5: impact-analysis.ts]
-    C -->|PR comment| D[Impact summary]
-    C -->|File| E[/tmp/dependabot-impact-analysis.md/]
-    E --> F[Step 6: test-recommendation.ts]
-    F -->|PR comment| G[QA report]
+sequenceDiagram
+    participant GH as GitHub Actions
+    participant AY as action.yml
+    participant IA as impact-analysis.ts
+    participant PR as PR Comments
+    participant TMP as Temp File
+    participant TR as test-recommendation.ts
+    participant CA as Claude API
 
-    style F stroke-dasharray: 5 5
-    linkStyle 3 stroke-dasharray: 5 5
-    linkStyle 4 stroke-dasharray: 5 5
+    GH->>AY: Trigger (pull_request / issue_comment)
+    AY->>AY: Mask secrets
+    AY->>AY: Resolve PR info + dependency names
+    AY->>AY: Setup Node.js + npm ci
+
+    AY->>IA: Execute
+    IA->>IA: Read target repo files
+    IA->>PR: Post impact summary
+    IA->>TMP: Write analysis Markdown
+
+    opt ANTHROPIC_API_KEY is provided
+        AY->>TR: Execute
+        TR->>TMP: Read analysis Markdown
+        TR->>CA: Send impact summary + prompt
+        CA-->>TR: QA report
+        TR->>PR: Post QA report
+    end
 ```
-
-> Step 6 (dashed) runs only when `ANTHROPIC_API_KEY` is provided.
 
 The two scripts are decoupled via a temporary file (`IMPACT_OUTPUT_PATH`). This means:
 - `impact-analysis.ts` can run independently without the AI step
@@ -154,20 +167,23 @@ Read the impact analysis output, send it to the Claude API with a structured pro
 ### Processing flow
 
 ```mermaid
-flowchart TD
-    T1[1. Read impact analysis] --> T2[2. Build system prompt]
-    T2 --> T3[3. Build user prompt]
-    T3 --> T4[4. Call Claude API]
-    T4 --> T5[5. Post/update PR comment]
-```
+sequenceDiagram
+    participant TR as test-recommendation.ts
+    participant TMP as Temp File
+    participant CA as Claude API
+    participant PR as PR Comments
 
-| Step | Description |
-|------|-------------|
-| 1. Read impact analysis | Read Markdown from `IMPACT_OUTPUT_PATH` |
-| 2. Build system prompt | Reviewer-focused structure + language instruction (en/ja/other) + GUI URL guidance (base-url or placeholder) |
-| 3. Build user prompt | Impact analysis Markdown + output format template |
-| 4. Call Claude API | Model: `AI_MODEL` (default: `claude-sonnet-4-6`), max_tokens: 4096 |
-| 5. Post/update PR comment | Upsert using marker `<!-- dependabot-test-recommendation -->` |
+    TR->>TMP: Read impact analysis Markdown
+    TR->>TR: Build system prompt
+    Note right of TR: Reviewer-focused structure<br>+ language instruction (en/ja)<br>+ GUI URL guidance
+    TR->>TR: Build user prompt
+    Note right of TR: Impact Markdown<br>+ output format template
+    TR->>CA: POST /v1/messages
+    Note right of CA: Model: AI_MODEL<br>max_tokens: 4096
+    CA-->>TR: QA report text
+    TR->>PR: Upsert PR comment
+    Note right of PR: Marker:<br>dependabot-test-recommendation
+```
 
 ### Prompt design
 
@@ -209,35 +225,11 @@ The prompt explicitly instructs Claude to include commands like `npm ls <package
 
 ## 5. Data Flow Between Components
 
-```mermaid
-flowchart TD
-    subgraph action.yml
-        ENV[Environment variables]
-    end
-
-    subgraph impact-analysis.ts
-        IA_READ[Read target repo files]
-        IA_COMMENT[Post PR comment]
-        IA_FILE[Write temp file]
-    end
-
-    subgraph test-recommendation.ts
-        TR_READ[Read temp file]
-        TR_API[Call Claude API]
-        TR_COMMENT[Post PR comment]
-    end
-
-    ENV --> IA_READ
-    IA_READ --> IA_COMMENT
-    IA_READ --> IA_FILE
-    IA_FILE --> TR_READ
-    TR_READ --> TR_API
-    TR_API --> TR_COMMENT
-```
+The sequence diagram in [Section 1](#1-pipeline-overview) shows the complete data flow. The table below summarizes what each component reads and writes:
 
 | Component | Reads | Writes |
 |-----------|-------|--------|
-| **action.yml** | — | Environment variables: `DEPENDENCY_NAMES`, `UPDATE_TYPE`, `REPOSITORY`, `PR_NUMBER`, `GITHUB_TOKEN`, `PR_HEAD_SHA` |
+| **action.yml** | GitHub event context | Environment variables: `DEPENDENCY_NAMES`, `UPDATE_TYPE`, `REPOSITORY`, `PR_NUMBER`, `GITHUB_TOKEN`, `PR_HEAD_SHA` |
 | **impact-analysis.ts** | Target repo: `package.json`, `package-lock.json`, `tsconfig.json`, `src/**/*.ts(x)` | PR comment (marker: `dependabot-impact-review`) + `/tmp/dependabot-impact-analysis.md` |
 | **test-recommendation.ts** | `/tmp/dependabot-impact-analysis.md` + env vars: `ANTHROPIC_API_KEY`, `AI_MODEL`, `AI_LANGUAGE`, `BASE_URL` | Claude API (`POST /v1/messages`) → PR comment (marker: `dependabot-test-recommendation`) |
 
