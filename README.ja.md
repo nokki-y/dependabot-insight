@@ -199,7 +199,7 @@ Dependabot PR 作成
 
 ## セキュリティ
 
-セキュリティ設計の詳細は [docs/security.md](./docs/security.md) を参照してください:
+セキュリティ設計の詳細は [docs/security.ja.md](./docs/security.ja.md) を参照してください:
 
 - データフロー図 — GitHub API・Claude API に送信される情報
 - 組み込みの保護機能（シークレットマスキング、エラーサニタイズ、gitleaks）

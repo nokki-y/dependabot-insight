@@ -1,5 +1,7 @@
 # Security Design
 
+> English | [日本語](./security.ja.md)
+
 This document describes the security architecture of dependabot-insight — what data flows where, what protections are in place, and what to consider when using this action in private repositories.
 
 ## Data flow
