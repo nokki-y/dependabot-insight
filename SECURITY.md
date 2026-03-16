@@ -19,6 +19,10 @@ If you discover a security vulnerability in dependabot-insight, please report it
 - Potential impact
 - Suggested fix (if any)
 
+### Response
+
+This project is maintained on a best-effort basis. We will do our best to respond to security reports promptly, but cannot guarantee specific timelines.
+
 ### Scope
 
 The following are in scope for security reports:
