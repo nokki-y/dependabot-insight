@@ -73,9 +73,21 @@ The results are posted as PR comments, giving reviewers everything they need to 
 
 </details>
 
-## Usage
+## Setup
 
-### Basic setup
+### 1. Configure secrets
+
+Go to your repository **Settings > Secrets and variables > Actions** and add:
+
+| Secret | Required | Description |
+|--------|----------|-------------|
+| `ANTHROPIC_API_KEY` | No | API key from [Anthropic Console](https://console.anthropic.com/). Required for AI QA report generation. If omitted, only the static impact analysis is posted |
+
+> `GITHUB_TOKEN` is automatically provided by GitHub Actions — no manual setup needed.
+
+### 2. Create workflow file
+
+Create `.github/workflows/dependabot-insight.yml`:
 
 ```yaml
 name: Dependabot Insight

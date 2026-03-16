@@ -73,9 +73,21 @@ Dependabot が PR を作成すると、この Action が自動的に以下を実
 
 </details>
 
-## 使い方
+## セットアップ
 
-### 基本設定
+### 1. シークレットの設定
+
+リポジトリの **Settings > Secrets and variables > Actions** で以下を追加してください:
+
+| シークレット | 必須 | 説明 |
+|------------|------|------|
+| `ANTHROPIC_API_KEY` | No | [Anthropic Console](https://console.anthropic.com/) から取得した API キー。AI 品質保証レポートの生成に必要。省略時は静的解析のみ投稿 |
+
+> `GITHUB_TOKEN` は GitHub Actions が自動提供するため、手動設定は不要です。
+
+### 2. ワークフローファイルの作成
+
+`.github/workflows/dependabot-insight.yml` を作成してください:
 
 ```yaml
 name: Dependabot Insight
