@@ -4,46 +4,51 @@
 
 This document describes the security architecture of dependabot-insight — what data flows where, what protections are in place, and what to consider when using this action in private repositories.
 
+## Terminology
+
+- **Target repository**: The repository where dependabot-insight is installed and Dependabot PRs are analyzed (i.e., the repository that adds this action to its workflow).
+
 ## Data flow
 
 ```
-┌──────────────────┐
-│  Your Repository │
-│                  │
-│  package.json    │──┐
-│  package-lock    │  │  Static analysis
-│  tsconfig.json   │  │  (runs in GitHub Actions runner)
-│  src/**/*.ts     │  │
-└──────────────────┘  │
-                      ▼
-            ┌──────────────────┐
-            │  Impact Analysis │
-            │                  │
-            │  Extracts:       │
-            │  - package names │
-            │  - file paths    │
-            │  - route paths   │
-            │  - file counts   │
-            │                  │
-            │  Does NOT read   │
-            │  source code     │
-            │  content         │
-            └────────┬─────────┘
-                     │
-          ┌──────────┼──────────┐
-          ▼                     ▼
-┌──────────────────┐  ┌──────────────────┐
-│  GitHub API      │  │  Claude API      │
-│                  │  │  (optional)      │
-│  Receives:       │  │                  │
-│  PR comment with │  │  Receives:       │
-│  impact summary  │  │  impact summary  │
-│                  │  │  (same as PR     │
-│                  │  │   comment)       │
-│                  │  │                  │
-│                  │  │  Returns:        │
-│                  │  │  QA report       │
-└──────────────────┘  └──────────────────┘
+┌────────────────────────────────┐
+│  Target Repository             │
+│  (where this action is used)   │
+│                                │
+│  package.json                  │──┐
+│  package-lock.json             │  │  Static analysis
+│  tsconfig.json                 │  │  (runs in GitHub Actions runner)
+│  src/**/*.ts                   │  │
+└────────────────────────────────┘  │
+                                    ▼
+                      ┌──────────────────┐
+                      │  Impact Analysis │
+                      │                  │
+                      │  Extracts:       │
+                      │  - package names │
+                      │  - file paths    │
+                      │  - route paths   │
+                      │  - file counts   │
+                      │                  │
+                      │  Does NOT read   │
+                      │  source code     │
+                      │  content         │
+                      └────────┬─────────┘
+                               │
+                    ┌──────────┼──────────┐
+                    ▼                     ▼
+          ┌──────────────────┐  ┌──────────────────┐
+          │  GitHub API      │  │  Claude API      │
+          │                  │  │  (optional)      │
+          │  Receives:       │  │                  │
+          │  PR comment with │  │  Receives:       │
+          │  impact summary  │  │  impact summary  │
+          │                  │  │  (same as PR     │
+          │                  │  │   comment)       │
+          │                  │  │                  │
+          │                  │  │  Returns:        │
+          │                  │  │  QA report       │
+          └──────────────────┘  └──────────────────┘
 ```
 
 ### What is sent to GitHub API
@@ -72,9 +77,9 @@ Only sent when `anthropic-api-key` is provided. The exact data sent is the impac
 
 ### What stays local (GitHub Actions runner only)
 
-- Source code files (read for AST parsing, never transmitted)
-- `package-lock.json` content (parsed locally for dependency tree analysis)
-- `tsconfig.json` content (parsed locally for path alias resolution)
+- Source code files in the target repository (read for AST parsing, never transmitted)
+- `package-lock.json` content in the target repository (parsed locally for dependency tree analysis)
+- `tsconfig.json` content in the target repository (parsed locally for path alias resolution)
 - All tokens and API keys (used only for authenticated API calls)
 
 ## Built-in protections
@@ -110,7 +115,7 @@ API errors may include request/response details. Both scripts sanitize error mes
 
 ## Considerations for private repositories
 
-When using this action in a private repository, be aware that the following information becomes visible:
+When the target repository is private, be aware that the following information becomes visible:
 
 ### In PR comments (visible to all repo collaborators)
 
