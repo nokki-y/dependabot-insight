@@ -3,3 +3,5 @@ repos:
     rev: v8.24.0
     hooks:
       - id: gitleaks
+        language: system
+        entry: gitleaks protect --staged --verbose
