@@ -11,29 +11,32 @@ This document describes the security architecture of dependabot-insight — what
 ## Data flow
 
 ```
-┌────────────────────────────────┐
-│  Target Repository             │
-│  (where this action is used)   │
-│                                │
-│  package.json                  │──┐
-│  package-lock.json             │  │  Static analysis
-│  tsconfig.json                 │  │  (runs in GitHub Actions runner)
-│  src/**/*.ts                   │  │
-└────────────────────────────────┘  │
-                                    ▼
-                      ┌──────────────────┐
-                      │  Impact Analysis │
-                      │                  │
-                      │  Extracts:       │
-                      │  - package names │
-                      │  - file paths    │
-                      │  - route paths   │
-                      │  - file counts   │
-                      │                  │
-                      │  Does NOT read   │
-                      │  source code     │
-                      │  content         │
-                      └────────┬─────────┘
+┌────────────────────────────────────────────────────────────────┐
+│  Target Repository (where this action is used)                 │
+│                                                                │
+│  package.json        ── Read to classify dependency            │
+│                         (dependencies / devDependencies)       │──┐
+│  package-lock.json   ── Read to trace transitive dependencies  │  │
+│  tsconfig.json       ── Read to resolve path aliases           │  │
+│  src/**/*.ts(x)      ── Read import/export declarations only   │  │
+│                         (via TypeScript AST parsing)           │  │
+└────────────────────────────────────────────────────────────────┘  │
+                                                                    │
+       Static analysis (runs in GitHub Actions runner)              │
+                                                                    ▼
+                                                 ┌──────────────────┐
+                                                 │  Impact Analysis │
+                                                 │                  │
+                                                 │  Extracts:       │
+                                                 │  - package names │
+                                                 │  - file paths    │
+                                                 │  - route paths   │
+                                                 │  - file counts   │
+                                                 │                  │
+                                                 │  Does NOT read   │
+                                                 │  source code     │
+                                                 │  content         │
+                                                 └────────┬─────────┘
                                │
                     ┌──────────┼──────────┐
                     ▼                     ▼
