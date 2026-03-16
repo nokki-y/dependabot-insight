@@ -6,7 +6,7 @@
 
 ## 前提条件
 
-- Node.js 22+
+- Node.js 20+
 - npm
 - Dependabot PR が存在するリポジトリ（例: dependabot-insight を導入する対象リポジトリ）
 

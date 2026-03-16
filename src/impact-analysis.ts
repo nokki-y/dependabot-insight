@@ -78,9 +78,9 @@ function sanitizeError(message: string): string {
   // Mask Authorization header values
   sanitized = sanitized.replace(/Bearer\s+[A-Za-z0-9_\-./+=]+/gi, "Bearer ***");
   // Mask common API key patterns
-  sanitized = sanitized.replace(/(?:sk-|ghp_|gho_|ghs_|ghr_)[A-Za-z0-9_\-]+/g, "***");
+  sanitized = sanitized.replace(/(?:sk-|ghp_|gho_|ghs_|ghr_|sk-ant-)[A-Za-z0-9_\-]+/g, "***");
   // Mask env var values if they appear in error messages
-  const secrets = [process.env.GITHUB_TOKEN, process.env.ANTHROPIC_API_KEY].filter(Boolean);
+  const secrets = [process.env.GITHUB_TOKEN, process.env.ANTHROPIC_API_KEY, process.env.BASE_URL].filter(Boolean);
   for (const secret of secrets) {
     if (secret && secret.length > 8) {
       sanitized = sanitized.replaceAll(secret, "***");
@@ -92,6 +92,12 @@ function sanitizeError(message: string): string {
 // Mask secrets at startup so GitHub Actions redacts them from all log output
 if (process.env.GITHUB_TOKEN) {
   console.log(`::add-mask::${process.env.GITHUB_TOKEN}`);
+}
+if (process.env.ANTHROPIC_API_KEY) {
+  console.log(`::add-mask::${process.env.ANTHROPIC_API_KEY}`);
+}
+if (process.env.BASE_URL) {
+  console.log(`::add-mask::${process.env.BASE_URL}`);
 }
 
 const dependencyNames = (process.env.DEPENDENCY_NAMES ?? "")

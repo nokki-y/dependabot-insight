@@ -6,7 +6,7 @@ This document describes how to test dependabot-insight during development.
 
 ## Prerequisites
 
-- Node.js 22+
+- Node.js 20+
 - npm
 - A repository with Dependabot PRs (e.g., the repository where dependabot-insight will be installed)
 
