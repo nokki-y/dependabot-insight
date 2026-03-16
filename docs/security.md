@@ -39,19 +39,24 @@ This document describes the security architecture of dependabot-insight — what
                           │
                ┌──────────┼──────────┐
                ▼                     ▼
-     ┌────────────────────────┐  ┌───────────────────────┐
-     │  GitHub API            │  │  Claude API           │
-     │                        │  │  (only when            │
-     │  Sends:                │  │   anthropic-api-key    │
-     │  Static analysis       │  │   is provided)         │
-     │  results posted as     │  │                        │
-     │  PR comment            │  │  Sends:                │
-     │  (impact summary)      │  │  impact summary        │
-     │                        │  │  (same as PR comment)  │
-     │                        │  │                        │
-     │                        │  │  Returns:              │
-     │                        │  │  QA report             │
-     └────────────────────────┘  └───────────────────────┘
+     ┌────────────────────────┐  ┌──────────────────────────────┐
+     │  GitHub API            │  │  Claude API                  │
+     │                        │  │  (only when                   │
+     │  Sends:                │  │   anthropic-api-key           │
+     │  Static analysis       │  │   is provided)                │
+     │  results posted as     │  │                               │
+     │  PR comment            │  │  Sends:                       │
+     │  (impact summary)      │  │  - impact summary             │
+     │                        │  │    (same as PR comment)       │
+     │                        │  │  - prompt specifying output   │
+     │                        │  │    format for QA report       │
+     │                        │  │                               │
+     │                        │  │  Returns:                     │
+     │                        │  │  - package necessity judgment │
+     │                        │  │  - test cases with steps      │
+     │                        │  │  (= QA report, posted as      │
+     │                        │  │    PR comment)                │
+     └────────────────────────┘  └──────────────────────────────┘
 ```
 
 ### What is sent to GitHub API
