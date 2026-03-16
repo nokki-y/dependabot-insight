@@ -10,10 +10,10 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "typescript": "^5.8.2"
+    "typescript": "^5.8.2",
+    "tsx": "^4.19.3"
   },
   "devDependencies": {
-    "tsx": "^4.19.3",
     "@types/node": "^22.13.14"
   },
   "engines": {

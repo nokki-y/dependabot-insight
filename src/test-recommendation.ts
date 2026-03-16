@@ -129,7 +129,11 @@ async function callClaude(userMessage: string): Promise<string> {
   const result = (await response.json()) as {
     content: { type: string; text: string }[];
   };
-  return result.content[0].text;
+  const textBlock = result.content?.find((block) => block.type === "text");
+  if (!textBlock) {
+    throw new Error("Anthropic API returned no text content in the response");
+  }
+  return textBlock.text;
 }
 
 // ---------------------------------------------------------------------------
@@ -143,15 +147,19 @@ async function upsertComment(
 ) {
   type IssueComment = { id: number; body: string };
 
+  const ghHeaders = {
+    Authorization: `Bearer ${githubToken}`,
+    Accept: "application/vnd.github+json",
+  };
+
   const commentsRes = await fetch(
     `https://api.github.com/repos/${owner}/${repoName}/issues/${issueNumber}/comments?per_page=100`,
-    {
-      headers: {
-        Authorization: `Bearer ${githubToken}`,
-        Accept: "application/vnd.github+json",
-      },
-    },
+    { headers: ghHeaders },
   );
+  if (!commentsRes.ok) {
+    const text = await commentsRes.text();
+    throw new Error(sanitizeError(`GitHub API error ${commentsRes.status}: ${text}`));
+  }
   const comments = (await commentsRes.json()) as IssueComment[];
 
   const marker = "<!-- dependabot-test-recommendation -->";
@@ -159,32 +167,26 @@ async function upsertComment(
   const markedBody = `${marker}\n${body}`;
 
   if (existing) {
-    await fetch(
+    const patchRes = await fetch(
       `https://api.github.com/repos/${owner}/${repoName}/issues/comments/${existing.id}`,
-      {
-        method: "PATCH",
-        headers: {
-          Authorization: `Bearer ${githubToken}`,
-          Accept: "application/vnd.github+json",
-        },
-        body: JSON.stringify({ body: markedBody }),
-      },
+      { method: "PATCH", headers: ghHeaders, body: JSON.stringify({ body: markedBody }) },
     );
+    if (!patchRes.ok) {
+      const text = await patchRes.text();
+      throw new Error(sanitizeError(`GitHub API error ${patchRes.status}: ${text}`));
+    }
     console.log("Updated existing recommendation comment.");
     return;
   }
 
-  await fetch(
+  const postRes = await fetch(
     `https://api.github.com/repos/${owner}/${repoName}/issues/${issueNumber}/comments`,
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${githubToken}`,
-        Accept: "application/vnd.github+json",
-      },
-      body: JSON.stringify({ body: markedBody }),
-    },
+    { method: "POST", headers: ghHeaders, body: JSON.stringify({ body: markedBody }) },
   );
+  if (!postRes.ok) {
+    const text = await postRes.text();
+    throw new Error(sanitizeError(`GitHub API error ${postRes.status}: ${text}`));
+  }
   console.log("Created new recommendation comment.");
 }
 
